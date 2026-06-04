@@ -41,6 +41,29 @@ export class Job {
   @Column({ type: 'int', nullable: true })
   salaryMax?: number | null;
 
+  @Column({ type: 'varchar', length: 60, nullable: true })
+  category?: string | null;
+
+  @Column({ type: 'varchar', length: 30, nullable: true })
+  experienceLevel?: string | null;
+
+  // Stored as a comma-separated list (TypeORM simple-array).
+  @Column({ type: 'simple-array', nullable: true })
+  skills?: string[] | null;
+
+  // How candidates apply: 'internal' (apply on platform) or 'external' (redirect).
+  @Column({ type: 'varchar', length: 20, default: 'internal' })
+  applyMethod: string;
+
+  @Column({ type: 'varchar', length: 512, nullable: true })
+  applyUrl?: string | null;
+
+  @Column({ type: 'boolean', default: false })
+  isUrgent: boolean;
+
+  @Column({ type: 'boolean', default: false })
+  isFeatured: boolean;
+
   @Index('IDX_jobs_status')
   @Column({ type: 'varchar', length: 20, default: JobStatus.PUBLISHED })
   status: JobStatus;

@@ -89,6 +89,13 @@ export class JobsService {
       employmentType: dto.employmentType,
       salaryMin: dto.salaryMin,
       salaryMax: dto.salaryMax,
+      category: dto.category ?? null,
+      experienceLevel: dto.experienceLevel ?? null,
+      skills: dto.skills ?? null,
+      applyMethod: dto.applyMethod ?? 'internal',
+      applyUrl: dto.applyUrl || null,
+      isUrgent: dto.isUrgent ?? false,
+      isFeatured: dto.isFeatured ?? false,
       status: dto.status ?? JobStatus.PUBLISHED,
       companyId: dto.companyId,
     });
@@ -114,6 +121,13 @@ export class JobsService {
     if (dto.employmentType !== undefined) job.employmentType = dto.employmentType;
     if (dto.salaryMin !== undefined) job.salaryMin = dto.salaryMin;
     if (dto.salaryMax !== undefined) job.salaryMax = dto.salaryMax;
+    if (dto.category !== undefined) job.category = dto.category;
+    if (dto.experienceLevel !== undefined) job.experienceLevel = dto.experienceLevel;
+    if (dto.skills !== undefined) job.skills = dto.skills;
+    if (dto.applyMethod !== undefined) job.applyMethod = dto.applyMethod;
+    if (dto.applyUrl !== undefined) job.applyUrl = dto.applyUrl || null;
+    if (dto.isUrgent !== undefined) job.isUrgent = dto.isUrgent;
+    if (dto.isFeatured !== undefined) job.isFeatured = dto.isFeatured;
     if (dto.status !== undefined) job.status = dto.status;
 
     const saved = await this.repo.save(job);

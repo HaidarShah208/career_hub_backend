@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { ApplicationStatus, EmploymentType, JobStatus } from '../../shared/constants';
 import { paginationQuerySchema } from '../../shared/validators/common';
+import { richJobFields } from '../jobs/jobs.validation';
 
 const currentYear = new Date().getFullYear();
 
@@ -41,6 +42,7 @@ export const createEmployerJobSchema = z.object({
       employmentType: z.nativeEnum(EmploymentType).optional(),
       salaryMin: z.coerce.number().int().nonnegative().optional(),
       salaryMax: z.coerce.number().int().nonnegative().optional(),
+      ...richJobFields,
       status: z.nativeEnum(JobStatus).optional(),
     })
     .refine(salaryRefinement, {
@@ -59,6 +61,7 @@ export const updateEmployerJobSchema = z.object({
       employmentType: z.nativeEnum(EmploymentType).optional(),
       salaryMin: z.coerce.number().int().nonnegative().optional(),
       salaryMax: z.coerce.number().int().nonnegative().optional(),
+      ...richJobFields,
       status: z.nativeEnum(JobStatus).optional(),
     })
     .refine(salaryRefinement, {

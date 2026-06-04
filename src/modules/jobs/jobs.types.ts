@@ -7,6 +7,13 @@ export interface CreateJobDto {
   employmentType?: EmploymentType;
   salaryMin?: number;
   salaryMax?: number;
+  category?: string;
+  experienceLevel?: string;
+  skills?: string[];
+  applyMethod?: 'internal' | 'external';
+  applyUrl?: string;
+  isUrgent?: boolean;
+  isFeatured?: boolean;
   status?: JobStatus;
   companyId: string;
 }

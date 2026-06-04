@@ -7,6 +7,17 @@ const salaryRefinement = (data: { salaryMin?: number; salaryMax?: number }) =>
   data.salaryMax === undefined ||
   data.salaryMax >= data.salaryMin;
 
+/** Optional rich fields shared by create/update job schemas. */
+export const richJobFields = {
+  category: z.string().max(60).optional(),
+  experienceLevel: z.string().max(30).optional(),
+  skills: z.array(z.string().max(60)).max(50).optional(),
+  applyMethod: z.enum(['internal', 'external']).optional(),
+  applyUrl: z.string().url('applyUrl must be a valid URL').max(512).optional().or(z.literal('')),
+  isUrgent: z.boolean().optional(),
+  isFeatured: z.boolean().optional(),
+};
+
 export const createJobSchema = z.object({
   body: z
     .object({
@@ -16,6 +27,7 @@ export const createJobSchema = z.object({
       employmentType: z.nativeEnum(EmploymentType).optional(),
       salaryMin: z.coerce.number().int().nonnegative().optional(),
       salaryMax: z.coerce.number().int().nonnegative().optional(),
+      ...richJobFields,
       status: z.nativeEnum(JobStatus).optional(),
       companyId: z.string({ required_error: 'companyId is required' }).uuid('companyId must be a valid UUID'),
     })
@@ -35,6 +47,7 @@ export const updateJobSchema = z.object({
       employmentType: z.nativeEnum(EmploymentType).optional(),
       salaryMin: z.coerce.number().int().nonnegative().optional(),
       salaryMax: z.coerce.number().int().nonnegative().optional(),
+      ...richJobFields,
       status: z.nativeEnum(JobStatus).optional(),
     })
     .refine(salaryRefinement, {
