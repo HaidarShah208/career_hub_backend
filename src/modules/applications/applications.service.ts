@@ -29,7 +29,15 @@ export class ApplicationsService {
       throw new ConflictError('You have already applied to this job');
     }
 
-    return this.repo.createWithHistory({ candidateId: actor.id, jobId: dto.jobId });
+    const application = await this.repo.createWithHistory({
+      candidateId: actor.id,
+      jobId: dto.jobId,
+    });
+
+    // Applying implies the candidate viewed the listing.
+    await jobsRepository.incrementViewCount(dto.jobId);
+
+    return application;
   }
 
   /** GET /applications and /admin/applications */

@@ -20,30 +20,53 @@ export interface EmployerAnalytics {
   jobPerformance: Array<{ jobId: string; job: string; views: number; applies: number }>;
 }
 
+function monthKey(d: Date): string {
+  return `${d.getFullYear()}-${d.getMonth()}`;
+}
+
+function weekKey(d: Date): string {
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+
+function startOfWeekMonday(d: Date): Date {
+  const date = new Date(d);
+  date.setHours(0, 0, 0, 0);
+  const day = date.getDay();
+  date.setDate(date.getDate() - ((day + 6) % 7));
+  return date;
+}
+
 function fillMonthly(
-  rows: Array<{ label: string; count: number }>,
+  rows: Array<{ period: Date; count: number }>,
   months: number,
 ): Array<{ month: string; applications: number }> {
+  const map = new Map(rows.map((r) => [monthKey(r.period), r.count]));
   const result: Array<{ month: string; applications: number }> = [];
   const now = new Date();
+
   for (let i = months - 1; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const label = d.toLocaleString('en-US', { month: 'short' });
-    const match = rows.find((r) => r.label === label);
-    result.push({ month: label, applications: match?.count ?? 0 });
+    result.push({ month: label, applications: map.get(monthKey(d)) ?? 0 });
   }
   return result;
 }
 
 function fillWeekly(
-  rows: Array<{ label: string; count: number }>,
+  rows: Array<{ period: Date; count: number }>,
   weeks: number,
 ): Array<{ week: string; applications: number }> {
-  return Array.from({ length: weeks }, (_, i) => {
-    const label = `W${i + 1}`;
-    const match = rows.find((r) => r.label === label);
-    return { week: label, applications: match?.count ?? 0 };
-  });
+  const map = new Map(rows.map((r) => [weekKey(startOfWeekMonday(r.period)), r.count]));
+  const monday = startOfWeekMonday(new Date());
+  const result: Array<{ week: string; applications: number }> = [];
+
+  for (let i = weeks - 1; i >= 0; i--) {
+    const weekStart = new Date(monday);
+    weekStart.setDate(monday.getDate() - i * 7);
+    const label = weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    result.push({ week: label, applications: map.get(weekKey(weekStart)) ?? 0 });
+  }
+  return result;
 }
 
 export class EmployerAnalyticsService {

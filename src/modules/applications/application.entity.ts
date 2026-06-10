@@ -11,6 +11,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { ApplicationStatus } from '../../shared/constants';
+import { CandidateProfile } from '../candidates/candidate-profile.entity';
 import { User } from '../users/user.entity';
 import { Job } from '../jobs/job.entity';
 import { ApplicationStatusHistory } from './application-status-history.entity';
@@ -36,6 +37,9 @@ export class Application {
   @ManyToOne(() => User, (user) => user.applications, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'candidateId' })
   candidate: User;
+
+  /** Populated via query join — not a DB column. */
+  candidateProfile?: CandidateProfile;
 
   @ManyToOne(() => Job, (job) => job.applications, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'jobId' })

@@ -1,6 +1,7 @@
 import { Repository } from 'typeorm';
 import { AppDataSource } from '../../config/database';
 import { ApplicationStatus } from '../../shared/constants';
+import { CandidateProfile } from '../candidates/candidate-profile.entity';
 import { Application } from './application.entity';
 import { ApplicationStatusHistory } from './application-status-history.entity';
 import { ListApplicationsQuery } from './applications.types';
@@ -8,6 +9,20 @@ import { ListApplicationsQuery } from './applications.types';
 export class ApplicationsRepository {
   private get repo(): Repository<Application> {
     return AppDataSource.getRepository(Application);
+  }
+
+  /** Joins the candidate user row and their profile for employer-facing reads. */
+  private withCandidateProfile(
+    qb: ReturnType<Repository<Application>['createQueryBuilder']>,
+  ) {
+    return qb
+      .leftJoinAndSelect('application.candidate', 'candidate')
+      .leftJoinAndMapOne(
+        'application.candidateProfile',
+        CandidateProfile,
+        'profile',
+        'profile.userId = candidate.id',
+      );
   }
 
   /**
@@ -73,14 +88,13 @@ export class ApplicationsRepository {
 
   /** Loads an application with its full, chronologically ordered timeline. */
   findByIdWithHistory(id: string): Promise<Application | null> {
-    return this.repo
+    const qb = this.repo
       .createQueryBuilder('application')
       .leftJoinAndSelect('application.job', 'job')
-      .leftJoinAndSelect('application.candidate', 'candidate')
       .leftJoinAndSelect('application.history', 'history')
       .where('application.id = :id', { id })
-      .orderBy('history.createdAt', 'ASC')
-      .getOne();
+      .orderBy('history.createdAt', 'ASC');
+    return this.withCandidateProfile(qb).getOne();
   }
 
   existsByCandidateAndJob(candidateId: string, jobId: string): Promise<boolean> {
@@ -128,7 +142,6 @@ export class ApplicationsRepository {
     const qb = this.repo
       .createQueryBuilder('application')
       .leftJoinAndSelect('application.job', 'job')
-      .leftJoinAndSelect('application.candidate', 'candidate')
       .where('job.companyId = :companyId', { companyId })
       .orderBy('application.createdAt', sortOrder)
       .skip((page - 1) * limit)
@@ -137,7 +150,7 @@ export class ApplicationsRepository {
     if (status) qb.andWhere('application.status = :status', { status });
     if (jobId) qb.andWhere('application.jobId = :jobId', { jobId });
 
-    return qb.getManyAndCount();
+    return this.withCandidateProfile(qb).getManyAndCount();
   }
 
   count(): Promise<number> {
@@ -166,21 +179,20 @@ export class ApplicationsRepository {
   }
 
   findRecentByCompany(companyId: string, limit: number): Promise<Application[]> {
-    return this.repo
+    const qb = this.repo
       .createQueryBuilder('application')
       .leftJoinAndSelect('application.job', 'job')
-      .leftJoinAndSelect('application.candidate', 'candidate')
       .where('job.companyId = :companyId', { companyId })
       .orderBy('application.createdAt', 'DESC')
-      .take(limit)
-      .getMany();
+      .take(limit);
+    return this.withCandidateProfile(qb).getMany();
   }
 
   /** Application counts grouped by calendar month for the last N months. */
   async countByCompanyPerMonth(
     companyId: string,
     months: number,
-  ): Promise<Array<{ period: string; label: string; count: number }>> {
+  ): Promise<Array<{ period: Date; count: number }>> {
     const since = new Date();
     since.setMonth(since.getMonth() - (months - 1));
     since.setDate(1);
@@ -190,44 +202,41 @@ export class ApplicationsRepository {
       .createQueryBuilder('application')
       .leftJoin('application.job', 'job')
       .select("DATE_TRUNC('month', application.createdAt)", 'period')
-      .addSelect("TO_CHAR(application.createdAt, 'Mon')", 'label')
       .addSelect('COUNT(application.id)', 'count')
       .where('job.companyId = :companyId', { companyId })
       .andWhere('application.createdAt >= :since', { since })
       .groupBy("DATE_TRUNC('month', application.createdAt)")
-      .addGroupBy("TO_CHAR(application.createdAt, 'Mon')")
       .orderBy("DATE_TRUNC('month', application.createdAt)", 'ASC')
-      .getRawMany<{ period: string; label: string; count: string }>();
+      .getRawMany<{ period: Date; count: string }>();
 
     return rows.map((r) => ({
-      period: r.period,
-      label: r.label,
+      period: new Date(r.period),
       count: Number(r.count),
     }));
   }
 
-  /** Application counts grouped by ISO week for the last N weeks. */
+  /** Application counts grouped by calendar week for the last N weeks. */
   async countByCompanyPerWeek(
     companyId: string,
     weeks: number,
-  ): Promise<Array<{ label: string; count: number }>> {
+  ): Promise<Array<{ period: Date; count: number }>> {
     const since = new Date();
     since.setDate(since.getDate() - weeks * 7);
+    since.setHours(0, 0, 0, 0);
 
     const rows = await this.repo
       .createQueryBuilder('application')
       .leftJoin('application.job', 'job')
-      .select("TO_CHAR(application.createdAt, 'IYYY-IW')", 'weekKey')
-      .addSelect('MIN(application.createdAt)', 'weekStart')
+      .select("DATE_TRUNC('week', application.createdAt)", 'period')
       .addSelect('COUNT(application.id)', 'count')
       .where('job.companyId = :companyId', { companyId })
       .andWhere('application.createdAt >= :since', { since })
-      .groupBy("TO_CHAR(application.createdAt, 'IYYY-IW')")
-      .orderBy('weekStart', 'ASC')
-      .getRawMany<{ weekKey: string; weekStart: string; count: string }>();
+      .groupBy("DATE_TRUNC('week', application.createdAt)")
+      .orderBy("DATE_TRUNC('week', application.createdAt)", 'ASC')
+      .getRawMany<{ period: Date; count: string }>();
 
-    return rows.map((r, i) => ({
-      label: `W${i + 1}`,
+    return rows.map((r) => ({
+      period: new Date(r.period),
       count: Number(r.count),
     }));
   }
