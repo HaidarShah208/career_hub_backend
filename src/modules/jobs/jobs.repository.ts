@@ -103,6 +103,54 @@ export class JobsRepository {
   findByCompanyId(companyId: string): Promise<Job[]> {
     return this.repo.find({ where: { companyId }, order: { createdAt: 'DESC' } });
   }
+
+  async sumViewCount(): Promise<number> {
+    const row = await this.repo
+      .createQueryBuilder('job')
+      .select('COALESCE(SUM(job.viewCount), 0)', 'total')
+      .getRawOne<{ total: string }>();
+    return Number(row?.total ?? 0);
+  }
+
+  async sumViewCountSince(since: Date): Promise<number> {
+    const row = await this.repo
+      .createQueryBuilder('job')
+      .select('COALESCE(SUM(job.viewCount), 0)', 'total')
+      .where('job.updatedAt >= :since', { since })
+      .getRawOne<{ total: string }>();
+    return Number(row?.total ?? 0);
+  }
+
+  countPremiumPublished(): Promise<number> {
+    return this.repo
+      .createQueryBuilder('job')
+      .where('job.status = :status', { status: JobStatus.PUBLISHED })
+      .andWhere('(job.isFeatured = true OR job.isUrgent = true)')
+      .getCount();
+  }
+
+  findPremiumJobs(limit = 20): Promise<Job[]> {
+    return this.repo
+      .createQueryBuilder('job')
+      .leftJoinAndSelect('job.company', 'company')
+      .where('(job.isFeatured = true OR job.isUrgent = true)')
+      .orderBy('job.createdAt', 'DESC')
+      .take(limit)
+      .getMany();
+  }
+
+  async countByCategory(): Promise<Array<{ category: string; count: number }>> {
+    const rows = await this.repo
+      .createQueryBuilder('job')
+      .select('COALESCE(job.category, :fallback)', 'category')
+      .addSelect('COUNT(job.id)', 'count')
+      .setParameter('fallback', 'other')
+      .groupBy('job.category')
+      .orderBy('count', 'DESC')
+      .getRawMany<{ category: string; count: string }>();
+
+    return rows.map((r) => ({ category: r.category, count: Number(r.count) }));
+  }
 }
 
 export const jobsRepository = new JobsRepository();

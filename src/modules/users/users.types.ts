@@ -19,3 +19,11 @@ export interface CreateUserDto {
   password: string;
   role?: UserRole;
 }
+
+export interface ListUsersQuery {
+  page: number;
+  limit: number;
+  search?: string;
+  role?: UserRole;
+  sortOrder: 'ASC' | 'DESC';
+}

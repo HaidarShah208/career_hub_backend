@@ -41,6 +41,24 @@ export class CompaniesRepository {
   count(): Promise<number> {
     return this.repo.count();
   }
+
+  countUnverified(): Promise<number> {
+    return this.repo.count({ where: { isVerified: false } });
+  }
+
+  findUnverified(limit = 50): Promise<Company[]> {
+    return this.repo.find({
+      where: { isVerified: false },
+      relations: { owner: true },
+      order: { createdAt: 'DESC' },
+      take: limit,
+    });
+  }
+
+  async setVerified(id: string, isVerified: boolean): Promise<Company | null> {
+    await this.repo.update({ id }, { isVerified });
+    return this.findById(id);
+  }
 }
 
 export const companiesRepository = new CompaniesRepository();

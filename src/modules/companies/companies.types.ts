@@ -8,6 +8,7 @@ export interface CreateCompanyDto {
   companySize?: string;
   foundedYear?: number;
   ownerId?: string;
+  isVerified?: boolean;
 }
 
 export type UpdateCompanyDto = Partial<Omit<CreateCompanyDto, 'ownerId'>> & {

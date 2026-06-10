@@ -37,6 +37,7 @@ export class EmployerCompanyService {
       companySize: dto.companySize,
       foundedYear: dto.foundedYear,
       ownerId,
+      isVerified: false,
     });
     return this.repo.save(company);
   }

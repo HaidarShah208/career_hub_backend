@@ -54,6 +54,9 @@ export class Company {
   @OneToMany(() => Job, (job) => job.company)
   jobs?: Job[];
 
+  @Column({ type: 'boolean', default: false })
+  isVerified: boolean;
+
   @CreateDateColumn({ type: 'timestamp' })
   createdAt: Date;
 

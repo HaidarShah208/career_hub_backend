@@ -2,7 +2,7 @@ import { Repository } from 'typeorm';
 import { AppDataSource } from '../../config/database';
 import { UserRole } from '../../shared/constants';
 import { User } from './user.entity';
-import { CreateUserDto } from './users.types';
+import { CreateUserDto, ListUsersQuery } from './users.types';
 
 /**
  * Data-access layer for the User entity. All persistence concerns live here;
@@ -44,6 +44,48 @@ export class UsersRepository {
 
   countByRole(role: UserRole): Promise<number> {
     return this.repo.count({ where: { role } });
+  }
+
+  async findAndCount(query: ListUsersQuery): Promise<[User[], number]> {
+    const { page, limit, search, role, sortOrder } = query;
+    const qb = this.repo
+      .createQueryBuilder('user')
+      .orderBy('user.createdAt', sortOrder)
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    if (role) qb.andWhere('user.role = :role', { role });
+    if (search) {
+      qb.andWhere(
+        '(user.firstName ILIKE :search OR user.lastName ILIKE :search OR user.email ILIKE :search)',
+        { search: `%${search}%` },
+      );
+    }
+
+    return qb.getManyAndCount();
+  }
+
+  async setActive(id: string, isActive: boolean): Promise<User | null> {
+    await this.repo.update({ id }, { isActive });
+    return this.findById(id);
+  }
+
+  /** Registrations grouped by calendar day for the last N days. */
+  async countPerDay(days: number): Promise<Array<{ period: Date; count: number }>> {
+    const since = new Date();
+    since.setDate(since.getDate() - (days - 1));
+    since.setHours(0, 0, 0, 0);
+
+    const rows = await this.repo
+      .createQueryBuilder('user')
+      .select("DATE_TRUNC('day', user.createdAt)", 'period')
+      .addSelect('COUNT(user.id)', 'count')
+      .where('user.createdAt >= :since', { since })
+      .groupBy("DATE_TRUNC('day', user.createdAt)")
+      .orderBy("DATE_TRUNC('day', user.createdAt)", 'ASC')
+      .getRawMany<{ period: Date; count: string }>();
+
+    return rows.map((r) => ({ period: new Date(r.period), count: Number(r.count) }));
   }
 
   async remove(user: User): Promise<void> {

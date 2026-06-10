@@ -258,6 +258,24 @@ export class ApplicationsRepository {
   }
 
   /** Application counts per job for a company. */
+  /** Platform-wide application counts per day for the last N days. */
+  async countPerDay(days: number): Promise<Array<{ period: Date; count: number }>> {
+    const since = new Date();
+    since.setDate(since.getDate() - (days - 1));
+    since.setHours(0, 0, 0, 0);
+
+    const rows = await this.repo
+      .createQueryBuilder('application')
+      .select("DATE_TRUNC('day', application.createdAt)", 'period')
+      .addSelect('COUNT(application.id)', 'count')
+      .where('application.createdAt >= :since', { since })
+      .groupBy("DATE_TRUNC('day', application.createdAt)")
+      .orderBy("DATE_TRUNC('day', application.createdAt)", 'ASC')
+      .getRawMany<{ period: Date; count: string }>();
+
+    return rows.map((r) => ({ period: new Date(r.period), count: Number(r.count) }));
+  }
+
   async countPerJobByCompany(
     companyId: string,
   ): Promise<Array<{ jobId: string; count: number }>> {
