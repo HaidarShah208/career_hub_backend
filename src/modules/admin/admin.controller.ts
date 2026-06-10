@@ -19,13 +19,17 @@ export class AdminController {
   /** GET /admin/users */
   async users(req: Request, res: Response): Promise<Response> {
     const query = req.query as unknown as ListUsersQuery;
-    const { items, meta } = await adminService.listUsers(query);
+    const { items, meta } = await adminService.listUsers(query, req.user!.id);
     return sendSuccess(res, items, 'Users retrieved', 200, meta);
   }
 
   /** PATCH /admin/users/:id/status */
   async updateUserStatus(req: Request, res: Response): Promise<Response> {
-    const user = await adminService.updateUserStatus(req.params.id, req.body.isActive);
+    const user = await adminService.updateUserStatus(
+      req.params.id,
+      req.body.isActive,
+      req.user!.id,
+    );
     return sendSuccess(res, user, 'User status updated');
   }
 

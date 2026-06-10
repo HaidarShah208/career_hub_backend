@@ -46,7 +46,7 @@ export class UsersRepository {
     return this.repo.count({ where: { role } });
   }
 
-  async findAndCount(query: ListUsersQuery): Promise<[User[], number]> {
+  async findAndCount(query: ListUsersQuery, excludeUserId?: string): Promise<[User[], number]> {
     const { page, limit, search, role, sortOrder } = query;
     const qb = this.repo
       .createQueryBuilder('user')
@@ -54,6 +54,7 @@ export class UsersRepository {
       .skip((page - 1) * limit)
       .take(limit);
 
+    if (excludeUserId) qb.andWhere('user.id != :excludeUserId', { excludeUserId });
     if (role) qb.andWhere('user.role = :role', { role });
     if (search) {
       qb.andWhere(

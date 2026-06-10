@@ -1,4 +1,4 @@
-import { NotFoundError } from '../../shared/errors';
+import { BadRequestError, NotFoundError } from '../../shared/errors';
 import { buildPaginationMeta, PaginationMeta } from '../../shared/utils/pagination';
 import { companiesRepository } from '../companies/companies.repository';
 import { toPublicUser } from '../users/user.mapper';
@@ -22,15 +22,19 @@ export class AdminService {
 
   async listUsers(
     query: ListUsersQuery,
+    excludeUserId?: string,
   ): Promise<{ items: PublicUser[]; meta: PaginationMeta }> {
-    const [users, total] = await usersRepository.findAndCount(query);
+    const [users, total] = await usersRepository.findAndCount(query, excludeUserId);
     return {
       items: users.map(toPublicUser),
       meta: buildPaginationMeta(total, query.page, query.limit),
     };
   }
 
-  async updateUserStatus(id: string, isActive: boolean): Promise<PublicUser> {
+  async updateUserStatus(id: string, isActive: boolean, actorId: string): Promise<PublicUser> {
+    if (id === actorId) {
+      throw new BadRequestError('You cannot change your own account status');
+    }
     const user = await usersRepository.setActive(id, isActive);
     if (!user) {
       throw new NotFoundError('User not found');
