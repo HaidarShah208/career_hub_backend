@@ -64,6 +64,9 @@ export class Job {
   @Column({ type: 'boolean', default: false })
   isFeatured: boolean;
 
+  @Column({ type: 'int', default: 0 })
+  viewCount: number;
+
   @Index('IDX_jobs_status')
   @Column({ type: 'varchar', length: 20, default: JobStatus.PUBLISHED })
   status: JobStatus;

@@ -1,4 +1,10 @@
+import { cache } from '../../config/redis';
+import { CACHE_KEYS } from '../../shared/constants';
 import { NotFoundError } from '../../shared/errors';
+import { deleteByUrl } from '../../shared/services/cloudinary.service';
+import { authRepository } from '../auth/auth.repository';
+import { candidatesRepository } from '../candidates/candidates.repository';
+import { companiesRepository } from '../companies/companies.repository';
 import { toPublicUser } from './user.mapper';
 import { usersRepository, UsersRepository } from './users.repository';
 import { PublicUser } from './users.types';
@@ -12,6 +18,34 @@ export class UsersService {
       throw new NotFoundError('User not found');
     }
     return toPublicUser(user);
+  }
+
+  /**
+   * Permanently deletes the authenticated user and all related data (profile,
+   * applications, owned companies/jobs, uploaded files). Cascading FKs handle
+   * most relational cleanup; Cloudinary assets and refresh tokens are removed
+   * explicitly first.
+   */
+  async deleteAccount(userId: string): Promise<void> {
+    const user = await this.repo.findById(userId);
+    if (!user) {
+      throw new NotFoundError('User not found');
+    }
+
+    const profile = await candidatesRepository.findByUserId(userId);
+    if (profile) {
+      await deleteByUrl(profile.avatarUrl, 'image');
+      await deleteByUrl(profile.resumeUrl, 'raw');
+    }
+
+    const company = await companiesRepository.findByOwnerId(userId);
+    if (company) {
+      await deleteByUrl(company.logo, 'image');
+    }
+
+    await authRepository.removeRefreshToken(userId);
+    await this.repo.remove(user);
+    await cache.del(CACHE_KEYS.JOBS_ALL);
   }
 }
 

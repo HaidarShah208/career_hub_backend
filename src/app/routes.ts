@@ -9,6 +9,7 @@ import jobsRoutes from '../modules/jobs/jobs.routes';
 import applicationsRoutes from '../modules/applications/applications.routes';
 import adminRoutes from '../modules/admin/admin.routes';
 import uploadsRoutes from '../modules/uploads/uploads.routes';
+import publicRoutes from '../modules/public/public.routes';
 
 /** Mounts every module router under the API prefix. */
 const router = Router();
@@ -27,5 +28,6 @@ router.use('/jobs', jobsRoutes);
 router.use('/applications', applicationsRoutes);
 router.use('/admin', adminRoutes);
 router.use('/uploads', uploadsRoutes);
+router.use('/public', publicRoutes);
 
 export default router;

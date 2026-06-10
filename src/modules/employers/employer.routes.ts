@@ -49,4 +49,7 @@ router.patch(
 // ---- Dashboard ----
 router.get('/dashboard', asyncHandler(c.dashboard.bind(c)));
 
+// ---- Analytics ----
+router.get('/analytics', asyncHandler(c.analytics.bind(c)));
+
 export default router;

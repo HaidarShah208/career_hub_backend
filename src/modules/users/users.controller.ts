@@ -8,6 +8,12 @@ export class UsersController {
     const user = await usersService.getById(req.user!.id);
     return sendSuccess(res, user, 'Current user retrieved');
   }
+
+  /** DELETE /users/me — permanently deletes the account and related data. */
+  async deleteMe(req: Request, res: Response): Promise<Response> {
+    await usersService.deleteAccount(req.user!.id);
+    return sendSuccess(res, null, 'Account deleted successfully');
+  }
 }
 
 export const usersController = new UsersController();

@@ -12,6 +12,12 @@ const writeAccess = [authenticate, adminOnly];
 
 router.get('/', validate(listJobsSchema), asyncHandler(jobsController.list.bind(jobsController)));
 
+router.post(
+  '/:id/view',
+  validate(idParamSchema),
+  asyncHandler(jobsController.recordView.bind(jobsController)),
+);
+
 router.get('/:id', validate(idParamSchema), asyncHandler(jobsController.getById.bind(jobsController)));
 
 router.post(

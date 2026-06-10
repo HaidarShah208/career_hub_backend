@@ -74,6 +74,19 @@ export class JobsService {
     return job;
   }
 
+  /** POST /jobs/:id/view — increments the public detail-page view counter. */
+  async recordView(id: string): Promise<{ viewCount: number }> {
+    const job = await this.repo.findById(id);
+    if (!job) {
+      throw new NotFoundError('Job not found');
+    }
+    if (job.status !== JobStatus.PUBLISHED) {
+      return { viewCount: job.viewCount ?? 0 };
+    }
+    await this.repo.incrementViewCount(id);
+    return { viewCount: (job.viewCount ?? 0) + 1 };
+  }
+
   /** POST /jobs */
   async create(dto: CreateJobDto): Promise<Job> {
     const company = await companiesRepository.findById(dto.companyId);

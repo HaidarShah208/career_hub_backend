@@ -175,6 +175,94 @@ export class ApplicationsRepository {
       .take(limit)
       .getMany();
   }
+
+  /** Application counts grouped by calendar month for the last N months. */
+  async countByCompanyPerMonth(
+    companyId: string,
+    months: number,
+  ): Promise<Array<{ period: string; label: string; count: number }>> {
+    const since = new Date();
+    since.setMonth(since.getMonth() - (months - 1));
+    since.setDate(1);
+    since.setHours(0, 0, 0, 0);
+
+    const rows = await this.repo
+      .createQueryBuilder('application')
+      .leftJoin('application.job', 'job')
+      .select("DATE_TRUNC('month', application.createdAt)", 'period')
+      .addSelect("TO_CHAR(application.createdAt, 'Mon')", 'label')
+      .addSelect('COUNT(application.id)', 'count')
+      .where('job.companyId = :companyId', { companyId })
+      .andWhere('application.createdAt >= :since', { since })
+      .groupBy("DATE_TRUNC('month', application.createdAt)")
+      .addGroupBy("TO_CHAR(application.createdAt, 'Mon')")
+      .orderBy("DATE_TRUNC('month', application.createdAt)", 'ASC')
+      .getRawMany<{ period: string; label: string; count: string }>();
+
+    return rows.map((r) => ({
+      period: r.period,
+      label: r.label,
+      count: Number(r.count),
+    }));
+  }
+
+  /** Application counts grouped by ISO week for the last N weeks. */
+  async countByCompanyPerWeek(
+    companyId: string,
+    weeks: number,
+  ): Promise<Array<{ label: string; count: number }>> {
+    const since = new Date();
+    since.setDate(since.getDate() - weeks * 7);
+
+    const rows = await this.repo
+      .createQueryBuilder('application')
+      .leftJoin('application.job', 'job')
+      .select("TO_CHAR(application.createdAt, 'IYYY-IW')", 'weekKey')
+      .addSelect('MIN(application.createdAt)', 'weekStart')
+      .addSelect('COUNT(application.id)', 'count')
+      .where('job.companyId = :companyId', { companyId })
+      .andWhere('application.createdAt >= :since', { since })
+      .groupBy("TO_CHAR(application.createdAt, 'IYYY-IW')")
+      .orderBy('weekStart', 'ASC')
+      .getRawMany<{ weekKey: string; weekStart: string; count: string }>();
+
+    return rows.map((r, i) => ({
+      label: `W${i + 1}`,
+      count: Number(r.count),
+    }));
+  }
+
+  /** Application counts grouped by status for an employer's jobs. */
+  async countByCompanyPerStatus(
+    companyId: string,
+  ): Promise<Array<{ status: ApplicationStatus; count: number }>> {
+    const rows = await this.repo
+      .createQueryBuilder('application')
+      .leftJoin('application.job', 'job')
+      .select('application.status', 'status')
+      .addSelect('COUNT(application.id)', 'count')
+      .where('job.companyId = :companyId', { companyId })
+      .groupBy('application.status')
+      .getRawMany<{ status: ApplicationStatus; count: string }>();
+
+    return rows.map((r) => ({ status: r.status, count: Number(r.count) }));
+  }
+
+  /** Application counts per job for a company. */
+  async countPerJobByCompany(
+    companyId: string,
+  ): Promise<Array<{ jobId: string; count: number }>> {
+    const rows = await this.repo
+      .createQueryBuilder('application')
+      .leftJoin('application.job', 'job')
+      .select('application.jobId', 'jobId')
+      .addSelect('COUNT(application.id)', 'count')
+      .where('job.companyId = :companyId', { companyId })
+      .groupBy('application.jobId')
+      .getRawMany<{ jobId: string; count: string }>();
+
+    return rows.map((r) => ({ jobId: r.jobId, count: Number(r.count) }));
+  }
 }
 
 export const applicationsRepository = new ApplicationsRepository();

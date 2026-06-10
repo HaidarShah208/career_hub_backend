@@ -86,6 +86,23 @@ export class JobsRepository {
   countByCompanyAndStatus(companyId: string, status: JobStatus): Promise<number> {
     return this.repo.count({ where: { companyId, status } });
   }
+
+  async incrementViewCount(id: string): Promise<void> {
+    await this.repo.increment({ id }, 'viewCount', 1);
+  }
+
+  async sumViewCountByCompany(companyId: string): Promise<number> {
+    const row = await this.repo
+      .createQueryBuilder('job')
+      .select('COALESCE(SUM(job.viewCount), 0)', 'total')
+      .where('job.companyId = :companyId', { companyId })
+      .getRawOne<{ total: string }>();
+    return Number(row?.total ?? 0);
+  }
+
+  findByCompanyId(companyId: string): Promise<Job[]> {
+    return this.repo.find({ where: { companyId }, order: { createdAt: 'DESC' } });
+  }
 }
 
 export const jobsRepository = new JobsRepository();

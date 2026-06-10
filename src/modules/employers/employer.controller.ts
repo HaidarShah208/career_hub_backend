@@ -4,6 +4,7 @@ import { ListJobsQuery } from '../jobs/jobs.types';
 import { ListApplicationsQuery } from '../applications/applications.types';
 import { employerApplicantsService } from './employer-applicants.service';
 import { employerCompanyService } from './employer-company.service';
+import { employerAnalyticsService } from './employer-analytics.service';
 import { employerDashboardService } from './employer-dashboard.service';
 import { employerJobsService } from './employer-jobs.service';
 
@@ -91,6 +92,12 @@ export class EmployerController {
   async dashboard(req: Request, res: Response): Promise<Response> {
     const data = await employerDashboardService.getDashboard(req.user!.id);
     return sendSuccess(res, data, 'Employer dashboard');
+  }
+
+  // ---- Analytics ----
+  async analytics(req: Request, res: Response): Promise<Response> {
+    const data = await employerAnalyticsService.getAnalytics(req.user!.id);
+    return sendSuccess(res, data, 'Employer analytics');
   }
 }
 

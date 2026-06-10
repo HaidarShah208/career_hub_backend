@@ -17,6 +17,12 @@ export class JobsController {
     return sendSuccess(res, job, 'Job retrieved');
   }
 
+  /** POST /jobs/:id/view */
+  async recordView(req: Request, res: Response): Promise<Response> {
+    const result = await jobsService.recordView(req.params.id);
+    return sendSuccess(res, result, 'View recorded');
+  }
+
   /** POST /jobs */
   async create(req: Request, res: Response): Promise<Response> {
     const job = await jobsService.create(req.body);

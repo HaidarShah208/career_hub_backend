@@ -1,5 +1,6 @@
 import { Repository } from 'typeorm';
 import { AppDataSource } from '../../config/database';
+import { UserRole } from '../../shared/constants';
 import { User } from './user.entity';
 import { CreateUserDto } from './users.types';
 
@@ -39,6 +40,14 @@ export class UsersRepository {
 
   count(): Promise<number> {
     return this.repo.count();
+  }
+
+  countByRole(role: UserRole): Promise<number> {
+    return this.repo.count({ where: { role } });
+  }
+
+  async remove(user: User): Promise<void> {
+    await this.repo.remove(user);
   }
 }
 
