@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import { AppDataSource } from '../../config/database';
 import { logger } from '../../shared/logger';
 import { seedAdmin } from './admin.seed';
+import { seedPlans } from './plans.seed';
 
 /**
  * Seed runner. Initialises the DataSource, executes all seeders in order,
@@ -13,6 +14,7 @@ async function runSeeds(): Promise<void> {
 
   try {
     await seedAdmin(AppDataSource);
+    await seedPlans(AppDataSource);
     logger.info('Seeding complete');
   } finally {
     await AppDataSource.destroy();

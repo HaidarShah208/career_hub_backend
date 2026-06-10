@@ -1,3 +1,4 @@
+import { EmployerStatus } from '../../shared/constants';
 import { ConflictError, NotFoundError } from '../../shared/errors';
 import { companiesRepository, CompaniesRepository } from '../companies/companies.repository';
 import { Company } from '../companies/company.entity';
@@ -39,6 +40,7 @@ export class EmployerCompanyService {
       ownerId,
       isVerified: false,
     });
+    company.employerStatus = EmployerStatus.PENDING;
     return this.repo.save(company);
   }
 

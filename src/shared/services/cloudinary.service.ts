@@ -111,6 +111,22 @@ export const companyLogoUploader = buildUploader({
   maxSizeMB: 5,
 });
 
+export const paymentProofUploader = buildUploader({
+  folder: 'payment-proofs',
+  resourceType: 'image',
+  allowedMime: ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'],
+  allowedExt: ['png', 'jpg', 'jpeg', 'webp'],
+  maxSizeMB: 5,
+});
+
+export const verificationDocUploader = buildUploader({
+  folder: 'verification-docs',
+  resourceType: 'image',
+  allowedMime: ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'],
+  allowedExt: ['png', 'jpg', 'jpeg', 'webp'],
+  maxSizeMB: 10,
+});
+
 /**
  * Extracts the Cloudinary `public_id` from a secure URL so the asset can be
  * deleted. For `image` resources the extension is stripped; for `raw` resources

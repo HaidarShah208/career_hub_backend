@@ -46,6 +46,17 @@ export class UploadsController {
     await uploadsService.removeCompanyLogo(req.user!.id);
     return sendSuccess(res, { logoUrl: null }, 'Company logo removed');
   }
+
+  /** POST /uploads/payment-proof */
+  async uploadPaymentProof(req: Request, res: Response): Promise<Response> {
+    return sendSuccess(res, { screenshotUrl: fileUrl(req) }, 'Payment proof uploaded', 201);
+  }
+
+  /** POST /uploads/verification-document */
+  async uploadVerificationDocument(req: Request, res: Response): Promise<Response> {
+    const documents = await uploadsService.addVerificationDocument(req.user!.id, fileUrl(req));
+    return sendSuccess(res, { verificationDocuments: documents }, 'Verification document uploaded', 201);
+  }
 }
 
 export const uploadsController = new UploadsController();

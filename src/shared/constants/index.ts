@@ -41,6 +41,48 @@ export const JOB_STATUSES = Object.values(JobStatus);
 export const EMPLOYMENT_TYPES = Object.values(EmploymentType);
 export const APPLICATION_STATUSES = Object.values(ApplicationStatus);
 
+export enum EmployerStatus {
+  PENDING = 'PENDING',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
+  SUSPENDED = 'SUSPENDED',
+}
+
+export enum SubscriptionStatus {
+  ACTIVE = 'ACTIVE',
+  PENDING_PAYMENT = 'PENDING_PAYMENT',
+  EXPIRED = 'EXPIRED',
+  CANCELLED = 'CANCELLED',
+  SUSPENDED = 'SUSPENDED',
+}
+
+export enum PaymentStatus {
+  PENDING = 'PENDING',
+  PROCESSING = 'PROCESSING',
+  SUCCESS = 'SUCCESS',
+  FAILED = 'FAILED',
+  REFUNDED = 'REFUNDED',
+  CANCELLED = 'CANCELLED',
+}
+
+export enum PaymentMethod {
+  STRIPE = 'STRIPE',
+  EASYPAISA = 'EASYPAISA',
+  JAZZCASH = 'JAZZCASH',
+  BANK_TRANSFER = 'BANK_TRANSFER',
+}
+
+export enum BillingCycle {
+  MONTHLY = 'MONTHLY',
+  YEARLY = 'YEARLY',
+}
+
+export const EMPLOYER_STATUSES = Object.values(EmployerStatus);
+export const SUBSCRIPTION_STATUSES = Object.values(SubscriptionStatus);
+export const PAYMENT_STATUSES = Object.values(PaymentStatus);
+export const PAYMENT_METHODS = Object.values(PaymentMethod);
+export const BILLING_CYCLES = Object.values(BillingCycle);
+
 /** Redis cache keys. */
 export const CACHE_KEYS = {
   JOBS_ALL: 'jobs:all',

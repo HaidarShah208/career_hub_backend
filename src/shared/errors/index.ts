@@ -68,6 +68,12 @@ export class ConflictError extends AppError {
   }
 }
 
+export class PaymentRequiredError extends AppError {
+  constructor(message = 'Payment required') {
+    super(message, 402);
+  }
+}
+
 export class InternalServerError extends AppError {
   constructor(message = 'Internal server error') {
     super(message, 500, [], false);

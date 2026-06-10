@@ -58,6 +58,16 @@ export class UploadsService {
     company.logo = null;
     await companiesRepository.save(company);
   }
+
+  /** Appends a verification document URL to the employer's company. */
+  async addVerificationDocument(userId: string, url: string): Promise<string[]> {
+    const company = await companiesRepository.findByOwnerId(userId);
+    if (!company) {
+      throw new NotFoundError('Create your company profile before uploading documents');
+    }
+    const updated = await companiesRepository.addVerificationDocument(company.id, url);
+    return updated?.verificationDocuments ?? [];
+  }
 }
 
 export const uploadsService = new UploadsService();

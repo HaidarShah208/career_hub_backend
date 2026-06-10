@@ -1,5 +1,6 @@
 import { ILike, Repository } from 'typeorm';
 import { AppDataSource } from '../../config/database';
+import { EmployerStatus } from '../../shared/constants';
 import { Company } from './company.entity';
 import { CreateCompanyDto, ListCompaniesQuery } from './companies.types';
 
@@ -18,6 +19,10 @@ export class CompaniesRepository {
 
   findById(id: string): Promise<Company | null> {
     return this.repo.findOne({ where: { id }, relations: { jobs: true } });
+  }
+
+  findByIdWithOwner(id: string): Promise<Company | null> {
+    return this.repo.findOne({ where: { id }, relations: { owner: true } });
   }
 
   findByOwnerId(ownerId: string): Promise<Company | null> {
@@ -43,21 +48,40 @@ export class CompaniesRepository {
   }
 
   countUnverified(): Promise<number> {
-    return this.repo.count({ where: { isVerified: false } });
+    return this.repo.count({ where: { employerStatus: EmployerStatus.PENDING } });
   }
 
   findUnverified(limit = 50): Promise<Company[]> {
     return this.repo.find({
-      where: { isVerified: false },
+      where: { employerStatus: EmployerStatus.PENDING },
       relations: { owner: true },
       order: { createdAt: 'DESC' },
       take: limit,
     });
   }
 
-  async setVerified(id: string, isVerified: boolean): Promise<Company | null> {
-    await this.repo.update({ id }, { isVerified });
+  async setEmployerStatus(id: string, status: EmployerStatus): Promise<Company | null> {
+    await this.repo.update(
+      { id },
+      { employerStatus: status, isVerified: status === EmployerStatus.APPROVED },
+    );
     return this.findById(id);
+  }
+
+  async setVerified(id: string, isVerified: boolean): Promise<Company | null> {
+    const status = isVerified ? EmployerStatus.APPROVED : EmployerStatus.PENDING;
+    return this.setEmployerStatus(id, status);
+  }
+
+  async addVerificationDocument(id: string, url: string): Promise<Company | null> {
+    const company = await this.findById(id);
+    if (!company) return null;
+    const docs = company.verificationDocuments ?? [];
+    if (!docs.includes(url)) docs.push(url);
+    company.verificationDocuments = docs;
+    company.employerStatus = EmployerStatus.PENDING;
+    company.isVerified = false;
+    return this.save(company);
   }
 }
 

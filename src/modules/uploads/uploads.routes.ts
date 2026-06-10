@@ -5,7 +5,9 @@ import {
   avatarUploader,
   companyLogoUploader,
   ensureCloudinaryConfigured,
+  paymentProofUploader,
   resumeUploader,
+  verificationDocUploader,
 } from '../../shared/services/cloudinary.service';
 import { asyncHandler } from '../../shared/utils/async-handler';
 import { uploadsController } from './uploads.controller';
@@ -124,6 +126,24 @@ router.delete(
   authenticate,
   authorize(UserRole.EMPLOYER, UserRole.ADMIN),
   asyncHandler(uploadsController.deleteCompanyLogo.bind(uploadsController)),
+);
+
+router.post(
+  '/payment-proof',
+  authenticate,
+  authorize(UserRole.EMPLOYER),
+  ensureCloudinaryConfigured,
+  paymentProofUploader.single('file'),
+  asyncHandler(uploadsController.uploadPaymentProof.bind(uploadsController)),
+);
+
+router.post(
+  '/verification-document',
+  authenticate,
+  authorize(UserRole.EMPLOYER),
+  ensureCloudinaryConfigured,
+  verificationDocUploader.single('file'),
+  asyncHandler(uploadsController.uploadVerificationDocument.bind(uploadsController)),
 );
 
 export default router;

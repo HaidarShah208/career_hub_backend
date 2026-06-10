@@ -8,6 +8,9 @@ import { Job } from '../modules/jobs/job.entity';
 import { Application } from '../modules/applications/application.entity';
 import { ApplicationStatusHistory } from '../modules/applications/application-status-history.entity';
 import { CandidateProfile } from '../modules/candidates/candidate-profile.entity';
+import { Plan } from '../modules/billing/plan.entity';
+import { Subscription } from '../modules/billing/subscription.entity';
+import { Payment } from '../modules/billing/payment.entity';
 
 /**
  * The single TypeORM DataSource for the whole application.
@@ -25,7 +28,17 @@ export const AppDataSource = new DataSource({
   database: env.DATABASE_NAME,
   synchronize: env.DB_SYNCHRONIZE,
   logging: env.DB_LOGGING,
-  entities: [User, Company, Job, Application, ApplicationStatusHistory, CandidateProfile],
+  entities: [
+    User,
+    Company,
+    Job,
+    Application,
+    ApplicationStatusHistory,
+    CandidateProfile,
+    Plan,
+    Subscription,
+    Payment,
+  ],
   migrations: [path.join(__dirname, '..', 'database', 'migrations', '*.{ts,js}')],
   subscribers: [],
 });

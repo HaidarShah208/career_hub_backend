@@ -1,5 +1,7 @@
-import { JobStatus, UserRole } from '../../shared/constants';
+import { UserRole } from '../../shared/constants';
 import { applicationsRepository } from '../applications/applications.repository';
+import { paymentsRepository } from '../billing/payments.repository';
+import { subscriptionsRepository } from '../billing/subscriptions.repository';
 import { jobsRepository } from '../jobs/jobs.repository';
 import { usersRepository } from '../users/users.repository';
 import { AdminAnalytics, AdminRevenue, AdminRevenueTransaction } from './admin.types';
@@ -9,9 +11,6 @@ const ROLE_LABELS: Record<UserRole, string> = {
   [UserRole.EMPLOYER]: 'Employers',
   [UserRole.ADMIN]: 'Admins',
 };
-
-const FEATURED_PRICE = 75_000;
-const URGENT_PRICE = 35_000;
 
 function dayKey(d: Date): string {
   return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
@@ -43,20 +42,6 @@ function fillDaily(
 
 function monthKey(d: Date): string {
   return `${d.getFullYear()}-${d.getMonth()}`;
-}
-
-function jobListingAmount(isFeatured: boolean, isUrgent: boolean): number {
-  let amount = 0;
-  if (isFeatured) amount += FEATURED_PRICE;
-  if (isUrgent) amount += URGENT_PRICE;
-  return amount;
-}
-
-function planLabel(isFeatured: boolean, isUrgent: boolean): string {
-  if (isFeatured && isUrgent) return 'Featured + Urgent';
-  if (isFeatured) return 'Featured';
-  if (isUrgent) return 'Urgent';
-  return 'Standard';
 }
 
 export class AdminAnalyticsService {
@@ -110,34 +95,29 @@ export class AdminAnalyticsService {
   }
 
   async getRevenue(): Promise<AdminRevenue> {
-    const premiumJobs = await jobsRepository.findPremiumJobs(100);
+    const [successfulPayments, pendingPayments, activeSubscriptions] = await Promise.all([
+      paymentsRepository.findSuccessful(200),
+      paymentsRepository.findPendingVerification(),
+      subscriptionsRepository.findAllWithPlan(),
+    ]);
+
     const now = new Date();
     const yearStart = new Date(now.getFullYear(), 0, 1);
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
     let totalRevenueYtd = 0;
     let revenueThisMonth = 0;
-    let pendingRevenue = 0;
     const monthlyMap = new Map<string, number>();
 
-    for (const job of premiumJobs) {
-      const amount = jobListingAmount(Boolean(job.isFeatured), Boolean(job.isUrgent));
-      if (!amount) continue;
-
-      const created = new Date(job.createdAt);
-      const isPaid = job.status === JobStatus.PUBLISHED;
-      if (!isPaid) {
-        pendingRevenue += amount;
-      }
-
-      if (created >= yearStart && isPaid) totalRevenueYtd += amount;
-      if (created >= monthStart && isPaid) revenueThisMonth += amount;
-
-      if (isPaid) {
-        const key = monthKey(created);
-        monthlyMap.set(key, (monthlyMap.get(key) ?? 0) + amount);
-      }
+    for (const payment of successfulPayments) {
+      const paidAt = payment.paidAt ? new Date(payment.paidAt) : new Date(payment.createdAt);
+      if (paidAt >= yearStart) totalRevenueYtd += payment.amount;
+      if (paidAt >= monthStart) revenueThisMonth += payment.amount;
+      const key = monthKey(paidAt);
+      monthlyMap.set(key, (monthlyMap.get(key) ?? 0) + payment.amount);
     }
+
+    const pendingRevenue = pendingPayments.reduce((sum, p) => sum + p.amount, 0);
 
     const revenueByMonth: Array<{ month: string; revenue: number }> = [];
     for (let i = 5; i >= 0; i--) {
@@ -146,16 +126,16 @@ export class AdminAnalyticsService {
       revenueByMonth.push({ month: label, revenue: monthlyMap.get(monthKey(d)) ?? 0 });
     }
 
-    const recentTransactions: AdminRevenueTransaction[] = premiumJobs.slice(0, 10).map((job) => ({
-      id: job.id,
-      company: job.company?.name ?? 'Company',
-      plan: planLabel(Boolean(job.isFeatured), Boolean(job.isUrgent)),
-      amount: jobListingAmount(Boolean(job.isFeatured), Boolean(job.isUrgent)),
-      status: job.status === JobStatus.PUBLISHED ? 'paid' : 'pending',
-      createdAt: job.createdAt.toISOString(),
+    const recentTransactions: AdminRevenueTransaction[] = successfulPayments.slice(0, 10).map((p) => ({
+      id: p.id,
+      company: p.employer ? `${p.employer.firstName} ${p.employer.lastName}`.trim() : 'Employer',
+      plan: p.plan?.name ?? 'Subscription',
+      amount: p.amount,
+      status: 'paid' as const,
+      createdAt: (p.paidAt ?? p.createdAt).toISOString(),
     }));
 
-    const activePremiumListings = await jobsRepository.countPremiumPublished();
+    const activePremiumListings = activeSubscriptions.filter((s) => s.status === 'ACTIVE').length;
 
     return {
       totalRevenueYtd,

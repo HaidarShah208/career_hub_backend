@@ -4,7 +4,9 @@ import helmet from 'helmet';
 import compression from 'compression';
 import { env } from '../config/env';
 import { setupSwagger } from '../config/swagger';
+import { billingController } from '../modules/billing/billing.controller';
 import { errorHandler, notFound, requestLogger } from '../shared/middleware';
+import { asyncHandler } from '../shared/utils/async-handler';
 import apiRoutes from './routes';
 
 /** Builds and configures the Express application (no network side-effects). */
@@ -23,6 +25,14 @@ export function createApp(): Application {
     }),
   );
   app.use(compression());
+
+  // Stripe webhooks require the raw request body for signature verification.
+  app.post(
+    `${env.API_PREFIX}/billing/webhooks/stripe`,
+    express.raw({ type: 'application/json' }),
+    asyncHandler(billingController.stripeWebhook.bind(billingController)),
+  );
+
   app.use(express.json({ limit: '1mb' }));
   app.use(express.urlencoded({ extended: true }));
   app.use(requestLogger);

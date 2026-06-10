@@ -9,6 +9,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { EmployerStatus } from '../../shared/constants';
 import { User } from '../users/user.entity';
 import { Job } from '../jobs/job.entity';
 
@@ -56,6 +57,12 @@ export class Company {
 
   @Column({ type: 'boolean', default: false })
   isVerified: boolean;
+
+  @Column({ type: 'varchar', length: 20, default: EmployerStatus.PENDING })
+  employerStatus: EmployerStatus;
+
+  @Column({ type: 'simple-array', nullable: true })
+  verificationDocuments?: string[] | null;
 
   @CreateDateColumn({ type: 'timestamp' })
   createdAt: Date;

@@ -1,6 +1,7 @@
 import { JobStatus } from '../../shared/constants';
 import { NotFoundError } from '../../shared/errors';
 import { PaginationMeta } from '../../shared/utils/pagination';
+import { billingEnforcementService } from '../billing/billing-enforcement.service';
 import { Job } from '../jobs/job.entity';
 import { jobsRepository } from '../jobs/jobs.repository';
 import { jobsService } from '../jobs/jobs.service';
@@ -27,6 +28,9 @@ export class EmployerJobsService {
   /** POST /employer/jobs */
   async create(dto: EmployerJobDto, ownerId: string): Promise<Job> {
     const company = await employerCompanyService.getMyCompany(ownerId);
+    if (dto.status === JobStatus.PUBLISHED) {
+      await billingEnforcementService.assertCanPublishJob(ownerId, company, dto);
+    }
     return jobsService.create({ ...dto, companyId: company.id });
   }
 
@@ -46,7 +50,11 @@ export class EmployerJobsService {
 
   /** PUT /employer/jobs/:id */
   async update(id: string, dto: UpdateEmployerJobDto, ownerId: string): Promise<Job> {
-    await this.getOwnedJob(id, ownerId);
+    const company = await employerCompanyService.getMyCompany(ownerId);
+    const job = await this.getOwnedJob(id, ownerId);
+    if (dto.status === JobStatus.PUBLISHED && job.status !== JobStatus.PUBLISHED) {
+      await billingEnforcementService.assertCanPublishJob(ownerId, company, { ...job, ...dto });
+    }
     return jobsService.update(id, dto);
   }
 
@@ -58,7 +66,9 @@ export class EmployerJobsService {
 
   /** PATCH /employer/jobs/:id/publish */
   async publish(id: string, ownerId: string): Promise<Job> {
-    await this.getOwnedJob(id, ownerId);
+    const company = await employerCompanyService.getMyCompany(ownerId);
+    const job = await this.getOwnedJob(id, ownerId);
+    await billingEnforcementService.assertCanPublishJob(ownerId, company, job);
     return jobsService.update(id, { status: JobStatus.PUBLISHED });
   }
 

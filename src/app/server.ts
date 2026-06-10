@@ -4,6 +4,7 @@ import { createApp } from './app';
 import { env } from '../config/env';
 import { AppDataSource } from '../config/database';
 import { connectRedis, disconnectRedis } from '../config/redis';
+import { startSubscriptionExpiryJob } from '../jobs/subscription-expiry.job';
 import { logger } from '../shared/logger';
 
 async function bootstrap(): Promise<void> {
@@ -22,6 +23,7 @@ async function bootstrap(): Promise<void> {
     logger.info(`🚀 Server listening on http://localhost:${env.PORT}`);
     logger.info(`📚 API docs available at http://localhost:${env.PORT}/api-docs`);
     logger.info(`🔌 API base path: ${env.API_PREFIX}`);
+    startSubscriptionExpiryJob();
   });
 
   // Graceful shutdown

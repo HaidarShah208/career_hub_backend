@@ -1,4 +1,6 @@
+import { EmployerStatus } from '../../shared/constants';
 import { BadRequestError, NotFoundError } from '../../shared/errors';
+import { notificationService } from '../../shared/services/notification.service';
 import { buildPaginationMeta, PaginationMeta } from '../../shared/utils/pagination';
 import { companiesRepository } from '../companies/companies.repository';
 import { toPublicUser } from '../users/user.mapper';
@@ -61,11 +63,22 @@ export class AdminService {
     if (!company) {
       throw new NotFoundError('Company not found');
     }
-    if (!verified) {
-      await companiesRepository.remove(company);
-      return;
+
+    const status = verified ? EmployerStatus.APPROVED : EmployerStatus.REJECTED;
+    const companyWithOwner = await companiesRepository.findByIdWithOwner(id);
+    await companiesRepository.setEmployerStatus(id, status);
+
+    const email = companyWithOwner?.owner?.email;
+    if (email) {
+      await notificationService.send({
+        to: email,
+        type: verified ? 'EMPLOYER_APPROVED' : 'EMPLOYER_REJECTED',
+        subject: verified ? 'Company approved' : 'Company verification rejected',
+        body: verified
+          ? 'Your company has been approved. You can now purchase a subscription and post jobs.'
+          : 'Your company verification was rejected. Please update your profile and documents.',
+      });
     }
-    await companiesRepository.setVerified(id, true);
   }
 
   getSiteAnalytics(): Promise<AdminAnalytics> {
