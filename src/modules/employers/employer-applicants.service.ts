@@ -1,4 +1,8 @@
 import { BadRequestError, NotFoundError } from '../../shared/errors';
+import {
+  applicationEmailService,
+  sendApplicationEmailAsync,
+} from '../../shared/services/application-email.service';
 import { AuthUser } from '../../shared/types';
 import { buildPaginationMeta, PaginationMeta } from '../../shared/utils/pagination';
 import { Application } from '../applications/application.entity';
@@ -48,6 +52,11 @@ export class EmployerApplicantsService {
     }
 
     await applicationsRepository.updateStatusWithHistory(application, dto.status, actor.id, dto.note);
+
+    sendApplicationEmailAsync(() =>
+      applicationEmailService.notifyCandidateStatusChange(id, dto.status, dto.note),
+    );
+
     return this.getById(id, actor.id);
   }
 }

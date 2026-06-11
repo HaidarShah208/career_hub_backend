@@ -50,7 +50,17 @@ export class EmailService {
       return;
     }
 
-    logger.info(`\n📧 ${logLabel} (SMTP not configured — copy link below)\nTo: ${to}\nLink: ${text.split(': ').pop()}\n`);
+    logger.info(`\n📧 ${logLabel} (SMTP not configured)\nTo: ${to}\n${text}\n`);
+  }
+
+  async sendApplicationEmail(
+    to: string,
+    subject: string,
+    html: string,
+    text: string,
+    logLabel: string,
+  ): Promise<void> {
+    await this.deliver(to, subject, html, text, logLabel);
   }
 
   async sendVerificationEmail(to: string, verifyUrl: string, name: string): Promise<void> {

@@ -1,5 +1,9 @@
 import { JobStatus, UserRole } from '../../shared/constants';
 import { BadRequestError, ConflictError, NotFoundError } from '../../shared/errors';
+import {
+  applicationEmailService,
+  sendApplicationEmailAsync,
+} from '../../shared/services/application-email.service';
 import { AuthUser } from '../../shared/types';
 import { buildPaginationMeta, PaginationMeta } from '../../shared/utils/pagination';
 import { jobsRepository } from '../jobs/jobs.repository';
@@ -36,6 +40,10 @@ export class ApplicationsService {
 
     // Applying implies the candidate viewed the listing.
     await jobsRepository.incrementViewCount(dto.jobId);
+
+    sendApplicationEmailAsync(() =>
+      applicationEmailService.notifyEmployerNewApplication(application.id),
+    );
 
     return application;
   }
@@ -88,6 +96,11 @@ export class ApplicationsService {
     }
 
     await this.repo.updateStatusWithHistory(application, dto.status, actor.id, dto.note);
+
+    sendApplicationEmailAsync(() =>
+      applicationEmailService.notifyCandidateStatusChange(id, dto.status, dto.note),
+    );
+
     return this.getById(id, actor);
   }
 }
