@@ -9,6 +9,16 @@ export class UsersController {
     return sendSuccess(res, user, 'Current user retrieved');
   }
 
+  /** PATCH /users/me/password */
+  async changePassword(req: Request, res: Response): Promise<Response> {
+    const result = await usersService.changePassword(
+      req.user!.id,
+      req.body.currentPassword,
+      req.body.newPassword,
+    );
+    return sendSuccess(res, result, result.message);
+  }
+
   /** DELETE /users/me — permanently deletes the account and related data. */
   async deleteMe(req: Request, res: Response): Promise<Response> {
     await usersService.deleteAccount(req.user!.id);

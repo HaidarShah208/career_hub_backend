@@ -30,6 +30,14 @@ export class UsersRepository {
       .getOne();
   }
 
+  findByIdWithPassword(id: string): Promise<User | null> {
+    return this.repo
+      .createQueryBuilder('user')
+      .addSelect('user.password')
+      .where('user.id = :id', { id })
+      .getOne();
+  }
+
   create(data: CreateUserDto): User {
     return this.repo.create({ ...data, email: data.email.toLowerCase() });
   }
