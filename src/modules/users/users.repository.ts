@@ -71,6 +71,28 @@ export class UsersRepository {
     return this.findById(id);
   }
 
+  findByVerificationToken(token: string): Promise<User | null> {
+    return this.repo
+      .createQueryBuilder('user')
+      .addSelect('user.emailVerificationToken')
+      .addSelect('user.emailVerificationExpires')
+      .where('user.emailVerificationToken = :token', { token })
+      .getOne();
+  }
+
+  async markEmailVerified(id: string): Promise<User | null> {
+    // Keep the token so re-opening the same email link is idempotent (Strict Mode, double-click).
+    await this.repo.update({ id }, { emailVerified: true });
+    return this.findById(id);
+  }
+
+  async setVerificationToken(id: string, token: string, expires: Date): Promise<void> {
+    await this.repo.update(
+      { id },
+      { emailVerificationToken: token, emailVerificationExpires: expires, emailVerified: false },
+    );
+  }
+
   /** Registrations grouped by calendar day for the last N days. */
   async countPerDay(days: number): Promise<Array<{ period: Date; count: number }>> {
     const since = new Date();

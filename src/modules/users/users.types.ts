@@ -8,6 +8,7 @@ export interface PublicUser {
   email: string;
   role: UserRole;
   isActive: boolean;
+  emailVerified: boolean;
   createdAt: Date;
   updatedAt: Date;
 }

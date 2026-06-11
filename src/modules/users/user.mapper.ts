@@ -10,6 +10,7 @@ export function toPublicUser(user: User): PublicUser {
     email: user.email,
     role: user.role,
     isActive: user.isActive,
+    emailVerified: user.emailVerified,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
   };

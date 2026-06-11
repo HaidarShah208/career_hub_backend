@@ -17,7 +17,13 @@ export async function seedAdmin(dataSource: DataSource): Promise<void> {
 
   const existing = await userRepo.findOne({ where: { email } });
   if (existing) {
-    logger.info(`Admin user already exists (${email}) - skipping`);
+    if (!existing.emailVerified) {
+      existing.emailVerified = true;
+      await userRepo.save(existing);
+      logger.info(`Admin user email marked verified (${email})`);
+    } else {
+      logger.info(`Admin user already exists (${email}) - skipping`);
+    }
     return;
   }
 
@@ -28,6 +34,7 @@ export async function seedAdmin(dataSource: DataSource): Promise<void> {
     password: await hashPassword(env.ADMIN_PASSWORD),
     role: UserRole.ADMIN,
     isActive: true,
+    emailVerified: true,
   });
 
   await userRepo.save(admin);

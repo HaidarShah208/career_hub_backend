@@ -36,6 +36,15 @@ export class User {
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
 
+  @Column({ type: 'boolean', default: false })
+  emailVerified: boolean;
+
+  @Column({ type: 'varchar', length: 255, nullable: true, select: false })
+  emailVerificationToken?: string | null;
+
+  @Column({ type: 'timestamp', nullable: true, select: false })
+  emailVerificationExpires?: Date | null;
+
   @OneToMany(() => Company, (company) => company.owner)
   companies?: Company[];
 

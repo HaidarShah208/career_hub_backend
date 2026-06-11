@@ -6,7 +6,7 @@ export class EmployerAuthController {
   /** POST /employers/signup */
   async signUp(req: Request, res: Response): Promise<Response> {
     const result = await authService.registerEmployer(req.body);
-    return sendSuccess(res, result, 'Employer account created successfully', 201);
+    return sendSuccess(res, result, result.message, 201);
   }
 
   /** POST /employers/signin */

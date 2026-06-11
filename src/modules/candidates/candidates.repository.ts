@@ -26,6 +26,7 @@ export class CandidatesRepository {
         password: data.passwordHash,
         role: UserRole.CANDIDATE,
         isActive: true,
+        emailVerified: false,
       });
       const savedUser = await userRepo.save(user);
 

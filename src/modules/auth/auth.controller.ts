@@ -6,7 +6,19 @@ export class AuthController {
   /** POST /auth/signup */
   async signUp(req: Request, res: Response): Promise<Response> {
     const result = await authService.signUp(req.body);
-    return sendSuccess(res, result, 'Account created successfully', 201);
+    return sendSuccess(res, result, result.message, 201);
+  }
+
+  /** POST /auth/verify-email */
+  async verifyEmail(req: Request, res: Response): Promise<Response> {
+    const result = await authService.verifyEmail(req.body.token);
+    return sendSuccess(res, result, result.message);
+  }
+
+  /** POST /auth/resend-verification */
+  async resendVerification(req: Request, res: Response): Promise<Response> {
+    const result = await authService.resendVerification(req.body.email);
+    return sendSuccess(res, result, result.message);
   }
 
   /** POST /auth/signin */

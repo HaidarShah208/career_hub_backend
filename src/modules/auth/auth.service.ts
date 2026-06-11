@@ -1,5 +1,14 @@
+import crypto from 'crypto';
 import { UserRole } from '../../shared/constants';
-import { ConflictError, ForbiddenError, UnauthorizedError } from '../../shared/errors';
+import { env } from '../../config/env';
+import {
+  BadRequestError,
+  ConflictError,
+  ForbiddenError,
+  NotFoundError,
+  UnauthorizedError,
+} from '../../shared/errors';
+import { emailService } from '../../shared/services/email.service';
 import { comparePassword, hashPassword } from '../../shared/utils/password';
 import {
   signTokenPair,
@@ -12,7 +21,9 @@ import { PublicUser } from '../users/users.types';
 import { usersRepository } from '../users/users.repository';
 import { candidatesRepository } from '../candidates/candidates.repository';
 import { authRepository, AuthRepository } from './auth.repository';
-import { AuthResult, AuthTokens, SignInDto, SignUpDto } from './auth.types';
+import { AuthResult, AuthTokens, SignInDto, SignUpDto, SignUpResult } from './auth.types';
+
+const VERIFICATION_TTL_MS = 24 * 60 * 60 * 1000;
 
 export class AuthService {
   constructor(private readonly repo: AuthRepository = authRepository) {}
@@ -23,8 +34,25 @@ export class AuthService {
     return tokens;
   }
 
+  private createVerificationToken(): string {
+    return crypto.randomBytes(32).toString('hex');
+  }
+
+  private buildVerificationUrl(token: string): string {
+    const base = env.FRONTEND_URL.replace(/\/$/, '');
+    return `${base}/auth/verify-email?token=${token}`;
+  }
+
+  private async sendVerificationEmail(user: User): Promise<void> {
+    const token = this.createVerificationToken();
+    const expires = new Date(Date.now() + VERIFICATION_TTL_MS);
+    await usersRepository.setVerificationToken(user.id, token, expires);
+    const url = this.buildVerificationUrl(token);
+    await emailService.sendVerificationEmail(user.email, url, user.firstName);
+  }
+
   /** POST /auth/signup — registers a new CANDIDATE (user + profile). */
-  async signUp(dto: SignUpDto): Promise<AuthResult> {
+  async signUp(dto: SignUpDto): Promise<SignUpResult> {
     const existing = await usersRepository.findByEmail(dto.email);
     if (existing) {
       throw new ConflictError('An account with this email already exists');
@@ -38,16 +66,19 @@ export class AuthService {
       passwordHash,
     });
 
-    const tokens = await this.issueTokens({ sub: user.id, email: user.email, role: user.role });
-    return { user: toPublicUser(user), ...tokens };
+    await this.sendVerificationEmail(user);
+
+    return {
+      message: 'Please verify your email. We sent a verification link to your inbox.',
+      email: user.email,
+      user: toPublicUser(user),
+    };
   }
 
   /** Verifies email + password and returns the active user, or throws. */
   private async verifyCredentials(dto: SignInDto): Promise<User> {
     const user = await this.repo.findByEmailWithPassword(dto.email);
 
-    // Same generic error for "no user" and "wrong password" to avoid leaking
-    // which emails exist.
     if (!user) {
       throw new UnauthorizedError('Invalid email or password');
     }
@@ -61,6 +92,12 @@ export class AuthService {
       throw new ForbiddenError('Your account has been deactivated');
     }
 
+    if (!user.emailVerified) {
+      throw new ForbiddenError(
+        'Please verify your email before signing in. Check your inbox for the verification link.',
+      );
+    }
+
     return user;
   }
 
@@ -72,7 +109,7 @@ export class AuthService {
   }
 
   /** POST /employers/signup — registers a new EMPLOYER account. */
-  async registerEmployer(dto: SignUpDto): Promise<AuthResult> {
+  async registerEmployer(dto: SignUpDto): Promise<SignUpResult> {
     const existing = await usersRepository.findByEmail(dto.email);
     if (existing) {
       throw new ConflictError('An account with this email already exists');
@@ -88,8 +125,13 @@ export class AuthService {
     });
     const saved = await usersRepository.save(user);
 
-    const tokens = await this.issueTokens({ sub: saved.id, email: saved.email, role: saved.role });
-    return { user: toPublicUser(saved), ...tokens };
+    await this.sendVerificationEmail(saved);
+
+    return {
+      message: 'Please verify your email. We sent a verification link to your inbox.',
+      email: saved.email,
+      user: toPublicUser(saved),
+    };
   }
 
   /** POST /employers/signin — enforces the EMPLOYER role. */
@@ -102,13 +144,58 @@ export class AuthService {
     return { user: toPublicUser(user), ...tokens };
   }
 
+  /** POST /auth/verify-email */
+  async verifyEmail(token: string): Promise<{ message: string; user: PublicUser }> {
+    const normalized = token?.trim();
+    if (!normalized) {
+      throw new BadRequestError('Verification token is required');
+    }
+
+    const user = await usersRepository.findByVerificationToken(normalized);
+    if (!user) {
+      throw new BadRequestError(
+        'Invalid verification link. If you already verified, try signing in.',
+      );
+    }
+
+    if (user.emailVerified) {
+      return { message: 'Email is already verified. You can sign in.', user: toPublicUser(user) };
+    }
+
+    if (!user.emailVerificationExpires || user.emailVerificationExpires < new Date()) {
+      throw new BadRequestError('Verification link has expired. Request a new one.');
+    }
+
+    const verified = await usersRepository.markEmailVerified(user.id);
+    if (!verified) {
+      throw new NotFoundError('User not found');
+    }
+
+    return {
+      message: 'Email verified successfully. You can now sign in.',
+      user: toPublicUser(verified),
+    };
+  }
+
+  /** POST /auth/resend-verification */
+  async resendVerification(email: string): Promise<{ message: string }> {
+    const user = await usersRepository.findByEmail(email);
+    if (!user) {
+      return { message: 'If an account exists for this email, a verification link has been sent.' };
+    }
+
+    if (user.emailVerified) {
+      return { message: 'This email is already verified. You can sign in.' };
+    }
+
+    await this.sendVerificationEmail(user);
+    return { message: 'If an account exists for this email, a verification link has been sent.' };
+  }
+
   /** POST /auth/refresh */
   async refresh(refreshToken: string): Promise<AuthTokens> {
     const payload = verifyRefreshToken(refreshToken);
 
-    // When Redis is available we enforce that the token is the latest issued
-    // one (supports logout / rotation). When it is unavailable we fall back to
-    // signature-only verification so auth keeps working.
     const stored = await this.repo.getRefreshToken(payload.sub);
     if (stored && stored !== refreshToken) {
       throw new UnauthorizedError('Refresh token has been revoked');
@@ -117,6 +204,10 @@ export class AuthService {
     const user = await this.repo.findById(payload.sub);
     if (!user || !user.isActive) {
       throw new UnauthorizedError('User no longer exists or is inactive');
+    }
+
+    if (!user.emailVerified) {
+      throw new ForbiddenError('Please verify your email before continuing.');
     }
 
     return this.issueTokens({ sub: user.id, email: user.email, role: user.role });

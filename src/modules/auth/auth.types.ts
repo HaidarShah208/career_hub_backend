@@ -20,3 +20,9 @@ export interface AuthTokens {
 export interface AuthResult extends AuthTokens {
   user: PublicUser;
 }
+
+export interface SignUpResult {
+  message: string;
+  email: string;
+  user: PublicUser;
+}

@@ -3,7 +3,13 @@ import rateLimit from 'express-rate-limit';
 import { authenticate, validate } from '../../shared/middleware';
 import { asyncHandler } from '../../shared/utils/async-handler';
 import { authController } from './auth.controller';
-import { refreshSchema, signInSchema, signUpSchema } from './auth.validation';
+import {
+  refreshSchema,
+  resendVerificationSchema,
+  signInSchema,
+  signUpSchema,
+  verifyEmailSchema,
+} from './auth.validation';
 
 const router = Router();
 
@@ -28,6 +34,20 @@ router.post(
   authLimiter,
   validate(signInSchema),
   asyncHandler(authController.signIn.bind(authController)),
+);
+
+router.post(
+  '/verify-email',
+  authLimiter,
+  validate(verifyEmailSchema),
+  asyncHandler(authController.verifyEmail.bind(authController)),
+);
+
+router.post(
+  '/resend-verification',
+  authLimiter,
+  validate(resendVerificationSchema),
+  asyncHandler(authController.resendVerification.bind(authController)),
 );
 
 router.post(
