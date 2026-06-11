@@ -14,16 +14,24 @@ function buildVerificationHtml(name: string, verifyUrl: string): string {
   `;
 }
 
+function buildPasswordResetHtml(name: string, resetUrl: string): string {
+  return `
+    <div style="font-family:sans-serif;max-width:520px;margin:0 auto">
+      <h2>Reset your password</h2>
+      <p>Hi ${name},</p>
+      <p>We received a request to reset your Pakistan Career Hub password.</p>
+      <p style="margin-top:10px; margin-bottom:10px"><a href="${resetUrl}" style="display:inline-block;padding:12px 24px;background:#16a34a;color:#fff;text-decoration:none;border-radius:6px">Create new password</a></p>
+      <p style="color:#666;font-size:14px">This link expires in 30 minutes. If you did not request this, you can ignore this email.</p>
+    </div>
+  `;
+}
+
 export class EmailService {
   private get isSmtpConfigured(): boolean {
     return Boolean(env.SMTP_HOST && env.SMTP_USER && env.SMTP_PASS);
   }
 
-  async sendVerificationEmail(to: string, verifyUrl: string, name: string): Promise<void> {
-    const subject = 'Verify your email — Pakistan Career Hub';
-    const html = buildVerificationHtml(name, verifyUrl);
-    const text = `Hi ${name}, verify your email to activate your Pakistan Career Hub account: ${verifyUrl}`;
-
+  private async deliver(to: string, subject: string, html: string, text: string, logLabel: string): Promise<void> {
     if (this.isSmtpConfigured) {
       const transporter = nodemailer.createTransport({
         host: env.SMTP_HOST,
@@ -38,15 +46,25 @@ export class EmailService {
         html,
         text,
       });
-      logger.info(`Verification email sent to ${to}`);
+      logger.info(`${logLabel} sent to ${to}`);
       return;
     }
 
-    logger.info(
-      `\n📧 VERIFICATION EMAIL (SMTP not configured — copy link below)\n` +
-        `To: ${to}\n` +
-        `Link: ${verifyUrl}\n`,
-    );
+    logger.info(`\n📧 ${logLabel} (SMTP not configured — copy link below)\nTo: ${to}\nLink: ${text.split(': ').pop()}\n`);
+  }
+
+  async sendVerificationEmail(to: string, verifyUrl: string, name: string): Promise<void> {
+    const subject = 'Verify your email — Pakistan Career Hub';
+    const html = buildVerificationHtml(name, verifyUrl);
+    const text = `Hi ${name}, verify your email: ${verifyUrl}`;
+    await this.deliver(to, subject, html, text, 'VERIFICATION EMAIL');
+  }
+
+  async sendPasswordResetEmail(to: string, resetUrl: string, name: string): Promise<void> {
+    const subject = 'Reset your password — Pakistan Career Hub';
+    const html = buildPasswordResetHtml(name, resetUrl);
+    const text = `Hi ${name}, reset your password: ${resetUrl}`;
+    await this.deliver(to, subject, html, text, 'PASSWORD RESET EMAIL');
   }
 }
 

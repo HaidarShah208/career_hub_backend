@@ -4,8 +4,10 @@ import { authenticate, validate } from '../../shared/middleware';
 import { asyncHandler } from '../../shared/utils/async-handler';
 import { authController } from './auth.controller';
 import {
+  forgotPasswordSchema,
   refreshSchema,
   resendVerificationSchema,
+  resetPasswordSchema,
   signInSchema,
   signUpSchema,
   verifyEmailSchema,
@@ -48,6 +50,20 @@ router.post(
   authLimiter,
   validate(resendVerificationSchema),
   asyncHandler(authController.resendVerification.bind(authController)),
+);
+
+router.post(
+  '/forgot-password',
+  authLimiter,
+  validate(forgotPasswordSchema),
+  asyncHandler(authController.forgotPassword.bind(authController)),
+);
+
+router.post(
+  '/reset-password',
+  authLimiter,
+  validate(resetPasswordSchema),
+  asyncHandler(authController.resetPassword.bind(authController)),
 );
 
 router.post(

@@ -36,3 +36,19 @@ export const resendVerificationSchema = z.object({
     email: z.string({ required_error: 'Email is required' }).email('A valid email is required'),
   }),
 });
+
+export const forgotPasswordSchema = z.object({
+  body: z.object({
+    email: z.string({ required_error: 'Email is required' }).email('A valid email is required'),
+  }),
+});
+
+export const resetPasswordSchema = z.object({
+  body: z.object({
+    token: z.string({ required_error: 'Reset token is required' }).min(10),
+    password: z
+      .string({ required_error: 'Password is required' })
+      .min(8, 'Password must be at least 8 characters')
+      .max(128),
+  }),
+});

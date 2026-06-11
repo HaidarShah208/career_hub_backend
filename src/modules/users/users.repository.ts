@@ -93,6 +93,27 @@ export class UsersRepository {
     );
   }
 
+  findByPasswordResetToken(token: string): Promise<User | null> {
+    return this.repo
+      .createQueryBuilder('user')
+      .addSelect('user.password')
+      .addSelect('user.passwordResetToken')
+      .addSelect('user.passwordResetExpires')
+      .where('user.passwordResetToken = :token', { token })
+      .getOne();
+  }
+
+  async setPasswordResetToken(id: string, token: string, expires: Date): Promise<void> {
+    await this.repo.update({ id }, { passwordResetToken: token, passwordResetExpires: expires });
+  }
+
+  async updatePassword(id: string, passwordHash: string): Promise<void> {
+    await this.repo.update(
+      { id },
+      { password: passwordHash, passwordResetToken: null, passwordResetExpires: null },
+    );
+  }
+
   /** Registrations grouped by calendar day for the last N days. */
   async countPerDay(days: number): Promise<Array<{ period: Date; count: number }>> {
     const since = new Date();

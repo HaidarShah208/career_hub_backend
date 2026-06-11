@@ -21,6 +21,18 @@ export class AuthController {
     return sendSuccess(res, result, result.message);
   }
 
+  /** POST /auth/forgot-password */
+  async forgotPassword(req: Request, res: Response): Promise<Response> {
+    const result = await authService.requestPasswordReset(req.body.email);
+    return sendSuccess(res, result, result.message);
+  }
+
+  /** POST /auth/reset-password */
+  async resetPassword(req: Request, res: Response): Promise<Response> {
+    const result = await authService.resetPassword(req.body.token, req.body.password);
+    return sendSuccess(res, result, result.message);
+  }
+
   /** POST /auth/signin */
   async signIn(req: Request, res: Response): Promise<Response> {
     const result = await authService.signIn(req.body);

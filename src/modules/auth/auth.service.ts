@@ -24,6 +24,7 @@ import { authRepository, AuthRepository } from './auth.repository';
 import { AuthResult, AuthTokens, SignInDto, SignUpDto, SignUpResult } from './auth.types';
 
 const VERIFICATION_TTL_MS = 24 * 60 * 60 * 1000;
+const PASSWORD_RESET_TTL_MS = 30 * 60 * 1000;
 
 export class AuthService {
   constructor(private readonly repo: AuthRepository = authRepository) {}
@@ -41,6 +42,11 @@ export class AuthService {
   private buildVerificationUrl(token: string): string {
     const base = env.FRONTEND_URL.replace(/\/$/, '');
     return `${base}/auth/verify-email?token=${token}`;
+  }
+
+  private buildPasswordResetUrl(token: string): string {
+    const base = env.FRONTEND_URL.replace(/\/$/, '');
+    return `${base}/auth/reset-password?token=${token}`;
   }
 
   private async sendVerificationEmail(user: User): Promise<void> {
@@ -190,6 +196,49 @@ export class AuthService {
 
     await this.sendVerificationEmail(user);
     return { message: 'If an account exists for this email, a verification link has been sent.' };
+  }
+
+  /** POST /auth/forgot-password */
+  async requestPasswordReset(email: string): Promise<{ message: string }> {
+    const user = await usersRepository.findByEmail(email);
+    if (!user || !user.isActive) {
+      return {
+        message: 'If an account exists for this email, a password reset link has been sent.',
+      };
+    }
+
+    const token = this.createVerificationToken();
+    const expires = new Date(Date.now() + PASSWORD_RESET_TTL_MS);
+    await usersRepository.setPasswordResetToken(user.id, token, expires);
+    const url = this.buildPasswordResetUrl(token);
+    await emailService.sendPasswordResetEmail(user.email, url, user.firstName);
+
+    return {
+      message: 'If an account exists for this email, a password reset link has been sent.',
+    };
+  }
+
+  /** POST /auth/reset-password */
+  async resetPassword(token: string, password: string): Promise<{ message: string }> {
+    const normalized = token?.trim();
+    if (!normalized) {
+      throw new BadRequestError('Reset token is required');
+    }
+
+    const user = await usersRepository.findByPasswordResetToken(normalized);
+    if (!user) {
+      throw new BadRequestError('Invalid or expired reset link. Request a new one.');
+    }
+
+    if (!user.passwordResetExpires || user.passwordResetExpires < new Date()) {
+      throw new BadRequestError('Reset link has expired. Request a new one.');
+    }
+
+    const passwordHash = await hashPassword(password);
+    await usersRepository.updatePassword(user.id, passwordHash);
+    await this.repo.removeRefreshToken(user.id);
+
+    return { message: 'Password updated successfully. You can now sign in.' };
   }
 
   /** POST /auth/refresh */
