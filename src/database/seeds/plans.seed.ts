@@ -5,6 +5,22 @@ import { logger } from '../../shared/logger';
 
 const DEFAULT_PLANS: Array<Partial<Plan> & { slug: string }> = [
   {
+    name: 'Free',
+    slug: 'free',
+    description: 'Get started with basic hiring tools at no cost.',
+    price: 0,
+    currency: 'PKR',
+    billingCycle: BillingCycle.MONTHLY,
+    jobLimit: 5,
+    applicationLimit: 50,
+    featuredJobsLimit: 0,
+    recruiterSeats: 1,
+    resumeViews: 5,
+    prioritySupport: false,
+    isPopular: false,
+    isActive: true,
+  },
+  {
     name: 'Starter',
     slug: 'starter',
     description: 'For small teams getting started with hiring.',

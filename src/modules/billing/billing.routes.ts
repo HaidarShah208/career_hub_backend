@@ -21,6 +21,7 @@ router.get('/plans', asyncHandler(c.listPlans.bind(c)));
 const employerBilling = Router();
 employerBilling.use(authenticate, authorize(UserRole.EMPLOYER));
 employerBilling.get('/overview', asyncHandler(c.employerOverview.bind(c)));
+employerBilling.post('/activate-free', asyncHandler(c.activateFreePlan.bind(c)));
 employerBilling.post(
   '/payments/manual',
   validate(createManualPaymentSchema),

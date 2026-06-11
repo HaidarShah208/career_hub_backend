@@ -39,6 +39,9 @@ export class StripeBillingService {
 
     const plan = await plansRepository.findById(planId);
     if (!plan || !plan.isActive) throw new BadRequestError('Plan not found');
+    if (plan.price <= 0) {
+      throw new BadRequestError('Free plans cannot be purchased via Stripe');
+    }
 
     const subscription = subscriptionsRepository.create({
       employerId,

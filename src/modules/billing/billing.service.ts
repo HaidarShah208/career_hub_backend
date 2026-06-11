@@ -92,6 +92,47 @@ export class BillingService {
     };
   }
 
+  async activateFreePlan(employerId: string): Promise<Subscription> {
+    const company = await employerCompanyService.getMyCompany(employerId);
+    await billingEnforcementService.assertCanPurchase(company);
+
+    const plan = await plansRepository.findBySlug('free');
+    if (!plan || !plan.isActive) throw new NotFoundError('Free plan is not available');
+
+    const active = await subscriptionsRepository.findActiveByEmployerId(employerId);
+    if (active) {
+      throw new BadRequestError('You already have an active subscription');
+    }
+
+    const subscription = subscriptionsRepository.create({
+      employerId,
+      planId: plan.id,
+      status: SubscriptionStatus.PENDING_PAYMENT,
+    });
+    const saved = await subscriptionsRepository.save(subscription);
+    return this.activateSubscription(saved.id, employerId);
+  }
+
+  /** Assigns the free plan when an employer is approved and has no subscription yet. */
+  async provisionFreePlanIfNeeded(employerId: string): Promise<void> {
+    const active = await subscriptionsRepository.findActiveByEmployerId(employerId);
+    if (active) return;
+
+    const latest = await subscriptionsRepository.findLatestByEmployerId(employerId);
+    if (latest?.status === SubscriptionStatus.PENDING_PAYMENT) return;
+
+    const plan = await plansRepository.findBySlug('free');
+    if (!plan?.isActive) return;
+
+    const subscription = subscriptionsRepository.create({
+      employerId,
+      planId: plan.id,
+      status: SubscriptionStatus.PENDING_PAYMENT,
+    });
+    const saved = await subscriptionsRepository.save(subscription);
+    await this.activateSubscription(saved.id, employerId);
+  }
+
   async createManualPayment(
     employerId: string,
     input: {
@@ -106,6 +147,10 @@ export class BillingService {
 
     const plan = await plansRepository.findById(input.planId);
     if (!plan || !plan.isActive) throw new NotFoundError('Plan not found');
+
+    if (plan.price <= 0) {
+      throw new BadRequestError('This plan is free. Activate it without payment.');
+    }
 
     if (![PaymentMethod.EASYPAISA, PaymentMethod.JAZZCASH, PaymentMethod.BANK_TRANSFER].includes(
       input.paymentMethod,
@@ -191,7 +236,7 @@ export class BillingService {
     const now = new Date();
     subscription.status = SubscriptionStatus.ACTIVE;
     subscription.startDate = now;
-    subscription.endDate = addBillingPeriod(now, plan.billingCycle);
+    subscription.endDate = plan.price <= 0 ? null : addBillingPeriod(now, plan.billingCycle);
     subscription.pendingPlanId = null;
     await subscriptionsRepository.save(subscription);
 

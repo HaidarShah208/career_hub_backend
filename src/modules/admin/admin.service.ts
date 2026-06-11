@@ -1,5 +1,6 @@
 import { EmployerStatus } from '../../shared/constants';
 import { BadRequestError, NotFoundError } from '../../shared/errors';
+import { billingService } from '../billing/billing.service';
 import { notificationService } from '../../shared/services/notification.service';
 import { buildPaginationMeta, PaginationMeta } from '../../shared/utils/pagination';
 import { companiesRepository } from '../companies/companies.repository';
@@ -68,6 +69,10 @@ export class AdminService {
     const companyWithOwner = await companiesRepository.findByIdWithOwner(id);
     await companiesRepository.setEmployerStatus(id, status);
 
+    if (verified && companyWithOwner?.ownerId) {
+      await billingService.provisionFreePlanIfNeeded(companyWithOwner.ownerId);
+    }
+
     const email = companyWithOwner?.owner?.email;
     if (email) {
       await notificationService.send({
@@ -75,7 +80,7 @@ export class AdminService {
         type: verified ? 'EMPLOYER_APPROVED' : 'EMPLOYER_REJECTED',
         subject: verified ? 'Company approved' : 'Company verification rejected',
         body: verified
-          ? 'Your company has been approved. You can now purchase a subscription and post jobs.'
+          ? 'Your company has been approved. Your free plan is active — you can post jobs or upgrade anytime.'
           : 'Your company verification was rejected. Please update your profile and documents.',
       });
     }

@@ -17,6 +17,12 @@ export class BillingController {
     return sendSuccess(res, data, 'Billing overview retrieved');
   }
 
+  /** POST /employer/billing/activate-free */
+  async activateFreePlan(req: Request, res: Response): Promise<Response> {
+    const subscription = await billingService.activateFreePlan(req.user!.id);
+    return sendSuccess(res, subscription, 'Free plan activated', 201);
+  }
+
   /** POST /employer/billing/payments/manual */
   async createManualPayment(req: Request, res: Response): Promise<Response> {
     const result = await billingService.createManualPayment(req.user!.id, req.body);
