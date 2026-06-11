@@ -90,7 +90,9 @@ export class BillingEnforcementService {
         ? null
         : Math.max(0, (plan.featuredJobsLimit ?? 0) - featuredJobs),
       resumeViewsUsed: 0,
-      resumeViewsRemaining: plan.resumeViews ?? null,
+      resumeViewsRemaining: isUnlimited(plan.resumeViews)
+        ? null
+        : Math.max(0, (plan.resumeViews ?? 0) - 0),
     };
   }
 }

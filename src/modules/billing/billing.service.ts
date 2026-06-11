@@ -70,6 +70,12 @@ export class BillingService {
                   price: plan.price,
                   currency: plan.currency,
                   billingCycle: plan.billingCycle,
+                  jobLimit: plan.jobLimit,
+                  applicationLimit: plan.applicationLimit,
+                  featuredJobsLimit: plan.featuredJobsLimit,
+                  recruiterSeats: plan.recruiterSeats,
+                  resumeViews: plan.resumeViews,
+                  prioritySupport: plan.prioritySupport,
                 }
               : null,
           }
