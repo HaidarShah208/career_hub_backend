@@ -179,3 +179,8 @@ List endpoints add a `meta` object with pagination details.
 - `bcryptjs` is used in place of native `bcrypt` so the project installs
   cleanly on every OS; the hashing format is identical.
 ```
+
+
+
+# for swager
+localhost:4000/api-docs

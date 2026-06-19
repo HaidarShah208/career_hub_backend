@@ -9,8 +9,9 @@ import {
 } from '../shared/constants';
 
 /**
- * Hand-authored OpenAPI 3 document. Kept as a typed object (rather than scanned
- * JSDoc) so the contract is explicit, versionable, and never silently drifts.
+ * Central OpenAPI 3 spec — all API documentation lives in this file only.
+ * When you add a new route, add its path entry to `paths` below.
+ * Swagger UI is mounted from `setupSwagger()` in `app.ts`.
  */
 const bearerAuth = [{ bearerAuth: [] }];
 
@@ -18,7 +19,20 @@ const jsonContent = (schemaRef: string) => ({
   'application/json': { schema: { $ref: schemaRef } },
 });
 
-export const swaggerSpec = {
+const multipartFileBody = {
+  content: {
+    'multipart/form-data': {
+      schema: {
+        type: 'object',
+        properties: {
+          file: { type: 'string', format: 'binary' },
+        },
+      },
+    },
+  },
+};
+
+const openApiDefinition = {
   openapi: '3.0.3',
   info: {
     title: 'Pakistan Career Hub API',
@@ -27,8 +41,15 @@ export const swaggerSpec = {
       'Production-grade monolithic backend for the Pakistan Career Hub job portal. ' +
       'Authenticate via `/auth/signin`, then pass the returned access token as a Bearer token.',
   },
-  servers: [{ url: env.API_PREFIX, description: 'API v1' }],
+  servers: [
+    {
+      url: `http://localhost:${env.PORT}${env.API_PREFIX}`,
+      description: 'Local development',
+    },
+    { url: env.API_PREFIX, description: 'Relative (same host)' },
+  ],
   tags: [
+    { name: 'Health', description: 'Service health' },
     { name: 'Auth', description: 'Authentication & token management' },
     { name: 'Users', description: 'Current user profile' },
     { name: 'Candidates', description: 'Candidate profile management' },
@@ -37,6 +58,9 @@ export const swaggerSpec = {
     { name: 'Companies', description: 'Company directory' },
     { name: 'Jobs', description: 'Job listings (Redis-cached)' },
     { name: 'Applications', description: 'Job applications' },
+    { name: 'Uploads', description: 'File uploads (Cloudinary)' },
+    { name: 'Billing', description: 'Plans, subscriptions & payments' },
+    { name: 'Public', description: 'Public stats & metadata' },
     { name: 'Admin', description: 'Admin-only dashboard & moderation' },
   ],
   components: {
@@ -255,7 +279,16 @@ export const swaggerSpec = {
       },
     },
   },
-  paths: {
+} as const;
+
+const paths = {
+    '/health': {
+      get: {
+        tags: ['Health'],
+        summary: 'Health check',
+        responses: { 200: { description: 'Service is healthy' } },
+      },
+    },
     '/auth/signin': {
       post: {
         tags: ['Auth'],
@@ -302,12 +335,123 @@ export const swaggerSpec = {
         responses: { 200: { description: 'Current user' }, 401: { description: 'Unauthorized' } },
       },
     },
+    '/auth/verify-email': {
+      post: {
+        tags: ['Auth'],
+        summary: 'Verify email with OTP token',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['email', 'token'],
+                properties: {
+                  email: { type: 'string', format: 'email' },
+                  token: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+        responses: { 200: { description: 'Email verified' }, 400: { description: 'Invalid token' } },
+      },
+    },
+    '/auth/resend-verification': {
+      post: {
+        tags: ['Auth'],
+        summary: 'Resend email verification OTP',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['email'],
+                properties: { email: { type: 'string', format: 'email' } },
+              },
+            },
+          },
+        },
+        responses: { 200: { description: 'Verification email sent' } },
+      },
+    },
+    '/auth/forgot-password': {
+      post: {
+        tags: ['Auth'],
+        summary: 'Request a password reset email',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['email'],
+                properties: { email: { type: 'string', format: 'email' } },
+              },
+            },
+          },
+        },
+        responses: { 200: { description: 'Reset email sent if account exists' } },
+      },
+    },
+    '/auth/reset-password': {
+      post: {
+        tags: ['Auth'],
+        summary: 'Reset password with token from email',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['token', 'password'],
+                properties: {
+                  token: { type: 'string' },
+                  password: { type: 'string', minLength: 8 },
+                },
+              },
+            },
+          },
+        },
+        responses: { 200: { description: 'Password updated' }, 400: { description: 'Invalid token' } },
+      },
+    },
     '/users/me': {
       get: {
         tags: ['Users'],
         summary: 'Get current user profile',
         security: bearerAuth,
         responses: { 200: { description: 'Current user' }, 401: { description: 'Unauthorized' } },
+      },
+      delete: {
+        tags: ['Users'],
+        summary: 'Delete the current user account',
+        security: bearerAuth,
+        responses: { 200: { description: 'Account deleted' }, 401: { description: 'Unauthorized' } },
+      },
+    },
+    '/users/me/password': {
+      patch: {
+        tags: ['Users'],
+        summary: 'Change the current user password',
+        security: bearerAuth,
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['currentPassword', 'newPassword'],
+                properties: {
+                  currentPassword: { type: 'string' },
+                  newPassword: { type: 'string', minLength: 8 },
+                },
+              },
+            },
+          },
+        },
+        responses: { 200: { description: 'Password changed' }, 401: { description: 'Unauthorized' } },
       },
     },
     '/employers/signup': {
@@ -452,6 +596,14 @@ export const swaggerSpec = {
         responses: { 200: { description: 'Dashboard', content: jsonContent('#/components/schemas/EmployerDashboard') } },
       },
     },
+    '/employer/analytics': {
+      get: {
+        tags: ['Employer'],
+        summary: 'Employer hiring analytics (charts & trends)',
+        security: bearerAuth,
+        responses: { 200: { description: 'Analytics data' } },
+      },
+    },
     '/candidates/profile': {
       get: {
         tags: ['Candidates'],
@@ -494,6 +646,14 @@ export const swaggerSpec = {
         security: bearerAuth,
         requestBody: { required: true, content: jsonContent('#/components/schemas/CreateJobRequest') },
         responses: { 201: { description: 'Created' }, 401: { description: 'Unauthorized' } },
+      },
+    },
+    '/jobs/{id}/view': {
+      post: {
+        tags: ['Jobs'],
+        summary: 'Record a job view (analytics)',
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        responses: { 200: { description: 'View recorded' }, 404: { description: 'Not found' } },
       },
     },
     '/jobs/{id}': {
@@ -618,7 +778,346 @@ export const swaggerSpec = {
     '/admin/companies': {
       get: { tags: ['Admin'], summary: 'All companies', security: bearerAuth, responses: { 200: { description: 'Companies' } } },
     },
-  },
+    '/admin/users': {
+      get: {
+        tags: ['Admin'],
+        summary: 'List all users',
+        security: bearerAuth,
+        parameters: [
+          { name: 'page', in: 'query', schema: { type: 'integer' } },
+          { name: 'limit', in: 'query', schema: { type: 'integer' } },
+          { name: 'role', in: 'query', schema: { type: 'string', enum: USER_ROLES } },
+          { name: 'search', in: 'query', schema: { type: 'string' } },
+        ],
+        responses: { 200: { description: 'Paginated users' } },
+      },
+    },
+    '/admin/users/{id}/status': {
+      patch: {
+        tags: ['Admin'],
+        summary: 'Activate or deactivate a user',
+        security: bearerAuth,
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['isActive'],
+                properties: { isActive: { type: 'boolean' } },
+              },
+            },
+          },
+        },
+        responses: { 200: { description: 'User updated' } },
+      },
+    },
+    '/admin/employers/pending': {
+      get: {
+        tags: ['Admin'],
+        summary: 'List employers pending company verification',
+        security: bearerAuth,
+        responses: { 200: { description: 'Pending employers' } },
+      },
+    },
+    '/admin/companies/{id}/verification': {
+      patch: {
+        tags: ['Admin'],
+        summary: 'Approve or reject an employer company',
+        security: bearerAuth,
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['status'],
+                properties: {
+                  status: { type: 'string', enum: ['APPROVED', 'REJECTED'] },
+                  note: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+        responses: { 200: { description: 'Verification updated' } },
+      },
+    },
+    '/admin/analytics': {
+      get: {
+        tags: ['Admin'],
+        summary: 'Platform analytics',
+        security: bearerAuth,
+        responses: { 200: { description: 'Analytics' } },
+      },
+    },
+    '/admin/revenue': {
+      get: {
+        tags: ['Admin'],
+        summary: 'Revenue & billing metrics',
+        security: bearerAuth,
+        responses: { 200: { description: 'Revenue data' } },
+      },
+    },
+    '/public/stats': {
+      get: {
+        tags: ['Public'],
+        summary: 'Public platform statistics',
+        responses: { 200: { description: 'Stats' } },
+      },
+    },
+    '/plans': {
+      get: {
+        tags: ['Billing'],
+        summary: 'List available subscription plans',
+        responses: { 200: { description: 'Plans' } },
+      },
+    },
+    '/employer/billing/overview': {
+      get: {
+        tags: ['Billing'],
+        summary: 'Employer billing overview (plan, usage, payment instructions)',
+        security: bearerAuth,
+        responses: { 200: { description: 'Billing overview' } },
+      },
+    },
+    '/employer/billing/activate-free': {
+      post: {
+        tags: ['Billing'],
+        summary: 'Activate the free plan for an approved employer',
+        security: bearerAuth,
+        responses: { 200: { description: 'Free plan activated' } },
+      },
+    },
+    '/employer/billing/payments/manual': {
+      post: {
+        tags: ['Billing'],
+        summary: 'Submit manual payment proof (Easypaisa / JazzCash / bank)',
+        security: bearerAuth,
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['planId', 'paymentMethod', 'transactionReference'],
+                properties: {
+                  planId: { type: 'string', format: 'uuid' },
+                  paymentMethod: { type: 'string', enum: ['EASYPAISA', 'JAZZCASH', 'BANK_TRANSFER'] },
+                  transactionReference: { type: 'string' },
+                  screenshotUrl: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+        responses: { 201: { description: 'Payment submitted for verification' } },
+      },
+    },
+    '/employer/billing/checkout/stripe': {
+      post: {
+        tags: ['Billing'],
+        summary: 'Start Stripe checkout for a plan',
+        security: bearerAuth,
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['planId', 'successUrl', 'cancelUrl'],
+                properties: {
+                  planId: { type: 'string', format: 'uuid' },
+                  successUrl: { type: 'string', format: 'uri' },
+                  cancelUrl: { type: 'string', format: 'uri' },
+                },
+              },
+            },
+          },
+        },
+        responses: { 200: { description: 'Stripe checkout URL' } },
+      },
+    },
+    '/employer/billing/upgrade': {
+      post: {
+        tags: ['Billing'],
+        summary: 'Request a plan upgrade',
+        security: bearerAuth,
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['planId'],
+                properties: { planId: { type: 'string', format: 'uuid' } },
+              },
+            },
+          },
+        },
+        responses: { 200: { description: 'Upgrade requested' } },
+      },
+    },
+    '/employer/billing/downgrade': {
+      post: {
+        tags: ['Billing'],
+        summary: 'Schedule a plan downgrade',
+        security: bearerAuth,
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['planId'],
+                properties: { planId: { type: 'string', format: 'uuid' } },
+              },
+            },
+          },
+        },
+        responses: { 200: { description: 'Downgrade scheduled' } },
+      },
+    },
+    '/admin/billing/plans': {
+      get: {
+        tags: ['Billing'],
+        summary: 'Admin — list all plans',
+        security: bearerAuth,
+        responses: { 200: { description: 'Plans' } },
+      },
+      post: {
+        tags: ['Billing'],
+        summary: 'Admin — create a plan',
+        security: bearerAuth,
+        responses: { 201: { description: 'Plan created' } },
+      },
+    },
+    '/admin/billing/plans/{id}': {
+      put: {
+        tags: ['Billing'],
+        summary: 'Admin — update a plan',
+        security: bearerAuth,
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        responses: { 200: { description: 'Plan updated' } },
+      },
+      delete: {
+        tags: ['Billing'],
+        summary: 'Admin — delete a plan',
+        security: bearerAuth,
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        responses: { 200: { description: 'Plan deleted' } },
+      },
+    },
+    '/admin/billing/subscriptions': {
+      get: {
+        tags: ['Billing'],
+        summary: 'Admin — list subscriptions',
+        security: bearerAuth,
+        responses: { 200: { description: 'Subscriptions' } },
+      },
+    },
+    '/admin/billing/payments': {
+      get: {
+        tags: ['Billing'],
+        summary: 'Admin — list manual payments',
+        security: bearerAuth,
+        responses: { 200: { description: 'Payments' } },
+      },
+    },
+    '/admin/billing/payments/{id}/verify': {
+      patch: {
+        tags: ['Billing'],
+        summary: 'Admin — verify or reject a manual payment',
+        security: bearerAuth,
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['status'],
+                properties: {
+                  status: { type: 'string', enum: ['VERIFIED', 'REJECTED'] },
+                  note: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+        responses: { 200: { description: 'Payment updated' } },
+      },
+    },
+    '/uploads/avatar': {
+      post: {
+        tags: ['Uploads'],
+        summary: 'Upload candidate avatar (PNG, JPG, JPEG, WEBP — max 5MB)',
+        security: bearerAuth,
+        requestBody: multipartFileBody,
+        responses: { 201: { description: 'Avatar uploaded' }, 401: { description: 'Unauthorized' } },
+      },
+      delete: {
+        tags: ['Uploads'],
+        summary: 'Remove candidate avatar',
+        security: bearerAuth,
+        responses: { 200: { description: 'Avatar removed' }, 401: { description: 'Unauthorized' } },
+      },
+    },
+    '/uploads/resume': {
+      post: {
+        tags: ['Uploads'],
+        summary: 'Upload candidate resume (PDF, DOC, DOCX — max 10MB)',
+        security: bearerAuth,
+        requestBody: multipartFileBody,
+        responses: { 201: { description: 'Resume uploaded' }, 401: { description: 'Unauthorized' } },
+      },
+      delete: {
+        tags: ['Uploads'],
+        summary: 'Remove candidate resume',
+        security: bearerAuth,
+        responses: { 200: { description: 'Resume removed' }, 401: { description: 'Unauthorized' } },
+      },
+    },
+    '/uploads/company-logo': {
+      post: {
+        tags: ['Uploads'],
+        summary: 'Upload company logo (PNG, JPG, SVG, WEBP — max 5MB)',
+        security: bearerAuth,
+        requestBody: multipartFileBody,
+        responses: { 201: { description: 'Logo uploaded' }, 401: { description: 'Unauthorized' } },
+      },
+      delete: {
+        tags: ['Uploads'],
+        summary: 'Remove company logo',
+        security: bearerAuth,
+        responses: { 200: { description: 'Logo removed' }, 401: { description: 'Unauthorized' } },
+      },
+    },
+    '/uploads/payment-proof': {
+      post: {
+        tags: ['Uploads'],
+        summary: 'Upload payment screenshot (PNG, JPG, WEBP — max 5MB)',
+        security: bearerAuth,
+        requestBody: multipartFileBody,
+        responses: { 201: { description: 'Payment proof uploaded' }, 401: { description: 'Unauthorized' } },
+      },
+    },
+    '/uploads/verification-document': {
+      post: {
+        tags: ['Uploads'],
+        summary: 'Upload employer verification document (PDF, PNG, JPG — max 10MB)',
+        security: bearerAuth,
+        requestBody: multipartFileBody,
+        responses: { 201: { description: 'Document uploaded' }, 401: { description: 'Unauthorized' } },
+      },
+    },
+};
+
+export const swaggerSpec = {
+  ...openApiDefinition,
+  paths,
 };
 
 /** Mounts Swagger UI at `/api-docs`. */
