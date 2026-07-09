@@ -54,4 +54,11 @@ export interface PendingEmployerCompany {
   createdAt: Date;
 }
 
+export interface AdminCategoryItem {
+  id: string;
+  slug: string;
+  name: string;
+  jobs: number;
+}
+
 export type { PublicUser, UserRole };

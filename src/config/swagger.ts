@@ -853,6 +853,14 @@ const paths = {
         responses: { 200: { description: 'Analytics' } },
       },
     },
+    '/admin/categories': {
+      get: {
+        tags: ['Admin'],
+        summary: 'Job categories with live counts from the database',
+        security: bearerAuth,
+        responses: { 200: { description: 'Categories' } },
+      },
+    },
     '/admin/revenue': {
       get: {
         tags: ['Admin'],

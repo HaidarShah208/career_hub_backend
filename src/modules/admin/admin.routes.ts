@@ -45,6 +45,8 @@ router.get('/analytics', asyncHandler(adminController.analytics.bind(adminContro
 
 router.get('/revenue', asyncHandler(adminController.revenue.bind(adminController)));
 
+router.get('/categories', asyncHandler(adminController.categories.bind(adminController)));
+
 router.get(
   '/jobs',
   validate(listJobsSchema),

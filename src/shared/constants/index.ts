@@ -99,3 +99,22 @@ export const PAGINATION = {
   DEFAULT_LIMIT: 10,
   MAX_LIMIT: 100,
 } as const;
+
+/** Canonical job category catalog (slug stored on `jobs.category`). */
+export const JOB_CATEGORIES = [
+  { value: 'software', label: 'Software & IT' },
+  { value: 'engineering', label: 'Engineering' },
+  { value: 'sales', label: 'Sales & Marketing' },
+  { value: 'finance', label: 'Finance & Accounting' },
+  { value: 'hr', label: 'Human Resources' },
+  { value: 'design', label: 'Design & Creative' },
+  { value: 'healthcare', label: 'Healthcare & Medical' },
+  { value: 'education', label: 'Education & Training' },
+  { value: 'customer_service', label: 'Customer Service' },
+  { value: 'logistics', label: 'Logistics & Supply Chain' },
+  { value: 'manufacturing', label: 'Manufacturing' },
+  { value: 'banking', label: 'Banking & Insurance' },
+  { value: 'government', label: 'Government Jobs' },
+  { value: 'media', label: 'Media & Journalism' },
+  { value: 'legal', label: 'Legal & Compliance' },
+] as const;

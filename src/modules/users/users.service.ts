@@ -1,5 +1,5 @@
 import { cache } from '../../config/redis';
-import { CACHE_KEYS } from '../../shared/constants';
+import { CACHE_KEYS, UserRole } from '../../shared/constants';
 import { BadRequestError, NotFoundError, UnauthorizedError } from '../../shared/errors';
 import { deleteByUrl } from '../../shared/services/cloudinary.service';
 import { comparePassword, hashPassword } from '../../shared/utils/password';
@@ -56,6 +56,9 @@ export class UsersService {
     const user = await this.repo.findById(userId);
     if (!user) {
       throw new NotFoundError('User not found');
+    }
+    if (user.role === UserRole.ADMIN) {
+      throw new BadRequestError('Admin accounts cannot be deleted');
     }
 
     const profile = await candidatesRepository.findByUserId(userId);

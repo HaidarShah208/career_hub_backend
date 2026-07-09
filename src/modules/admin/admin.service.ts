@@ -1,9 +1,10 @@
-import { EmployerStatus } from '../../shared/constants';
+import { EmployerStatus, JOB_CATEGORIES, UserRole } from '../../shared/constants';
 import { BadRequestError, NotFoundError } from '../../shared/errors';
 import { billingService } from '../billing/billing.service';
 import { notificationService } from '../../shared/services/notification.service';
 import { buildPaginationMeta, PaginationMeta } from '../../shared/utils/pagination';
 import { companiesRepository } from '../companies/companies.repository';
+import { jobsRepository } from '../jobs/jobs.repository';
 import { toPublicUser } from '../users/user.mapper';
 import { usersRepository } from '../users/users.repository';
 import { ListUsersQuery, PublicUser } from '../users/users.types';
@@ -11,6 +12,7 @@ import { adminAnalyticsService } from './admin-analytics.service';
 import { adminRepository, AdminRepository } from './admin.repository';
 import {
   AdminAnalytics,
+  AdminCategoryItem,
   AdminRevenue,
   DashboardStats,
   PendingEmployerCompany,
@@ -27,7 +29,10 @@ export class AdminService {
     query: ListUsersQuery,
     excludeUserId?: string,
   ): Promise<{ items: PublicUser[]; meta: PaginationMeta }> {
-    const [users, total] = await usersRepository.findAndCount(query, excludeUserId);
+    const [users, total] = await usersRepository.findAndCount(query, {
+      excludeUserId,
+      excludeRoles: [UserRole.ADMIN],
+    });
     return {
       items: users.map(toPublicUser),
       meta: buildPaginationMeta(total, query.page, query.limit),
@@ -37,6 +42,13 @@ export class AdminService {
   async updateUserStatus(id: string, isActive: boolean, actorId: string): Promise<PublicUser> {
     if (id === actorId) {
       throw new BadRequestError('You cannot change your own account status');
+    }
+    const existing = await usersRepository.findById(id);
+    if (!existing) {
+      throw new NotFoundError('User not found');
+    }
+    if (existing.role === UserRole.ADMIN) {
+      throw new BadRequestError('Admin accounts cannot be suspended or modified here');
     }
     const user = await usersRepository.setActive(id, isActive);
     if (!user) {
@@ -92,6 +104,32 @@ export class AdminService {
 
   getRevenue(): Promise<AdminRevenue> {
     return adminAnalyticsService.getRevenue();
+  }
+
+  async listCategories(): Promise<AdminCategoryItem[]> {
+    const rows = await jobsRepository.countByCategory();
+    const countBySlug = new Map(rows.map((r) => [r.category, r.count]));
+    const knownSlugs = new Set<string>(JOB_CATEGORIES.map((c) => c.value));
+
+    const items: AdminCategoryItem[] = JOB_CATEGORIES.map((cat) => ({
+      id: cat.value,
+      slug: cat.value,
+      name: cat.label,
+      jobs: countBySlug.get(cat.value) ?? 0,
+    }));
+
+    for (const row of rows) {
+      if (!knownSlugs.has(row.category)) {
+        items.push({
+          id: row.category,
+          slug: row.category,
+          name: row.category.charAt(0).toUpperCase() + row.category.slice(1).replace(/_/g, ' '),
+          jobs: row.count,
+        });
+      }
+    }
+
+    return items.sort((a, b) => b.jobs - a.jobs || a.name.localeCompare(b.name));
   }
 }
 

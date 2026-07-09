@@ -57,6 +57,12 @@ export class AdminController {
     return sendSuccess(res, data, 'Revenue data retrieved');
   }
 
+  /** GET /admin/categories */
+  async categories(_req: Request, res: Response): Promise<Response> {
+    const items = await adminService.listCategories();
+    return sendSuccess(res, items, 'Categories retrieved');
+  }
+
   /** GET /admin/jobs */
   async jobs(req: Request, res: Response): Promise<Response> {
     const query = req.query as unknown as ListJobsQuery;
