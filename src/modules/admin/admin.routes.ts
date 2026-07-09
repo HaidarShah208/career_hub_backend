@@ -1,12 +1,15 @@
 import { Router } from 'express';
 import { adminOnly, authenticate, validate } from '../../shared/middleware';
 import { asyncHandler } from '../../shared/utils/async-handler';
+import { idParamSchema } from '../../shared/validators/common';
 import { adminController } from './admin.controller';
 import {
+  createCategorySchema,
   listApplicationsSchema,
   listCompaniesSchema,
   listJobsSchema,
   listUsersSchema,
+  updateCategorySchema,
   updateUserStatusSchema,
   verifyCompanySchema,
 } from './admin.validation';
@@ -46,6 +49,24 @@ router.get('/analytics', asyncHandler(adminController.analytics.bind(adminContro
 router.get('/revenue', asyncHandler(adminController.revenue.bind(adminController)));
 
 router.get('/categories', asyncHandler(adminController.categories.bind(adminController)));
+
+router.post(
+  '/categories',
+  validate(createCategorySchema),
+  asyncHandler(adminController.createCategory.bind(adminController)),
+);
+
+router.patch(
+  '/categories/:id',
+  validate(updateCategorySchema),
+  asyncHandler(adminController.updateCategory.bind(adminController)),
+);
+
+router.delete(
+  '/categories/:id',
+  validate(idParamSchema),
+  asyncHandler(adminController.deleteCategory.bind(adminController)),
+);
 
 router.get(
   '/jobs',

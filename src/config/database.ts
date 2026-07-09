@@ -5,6 +5,7 @@ import { env } from './env';
 import { User } from '../modules/users/user.entity';
 import { Company } from '../modules/companies/company.entity';
 import { Job } from '../modules/jobs/job.entity';
+import { JobCategory } from '../modules/jobs/job-category.entity';
 import { Application } from '../modules/applications/application.entity';
 import { ApplicationStatusHistory } from '../modules/applications/application-status-history.entity';
 import { CandidateProfile } from '../modules/candidates/candidate-profile.entity';
@@ -32,6 +33,7 @@ export const AppDataSource = new DataSource({
     User,
     Company,
     Job,
+    JobCategory,
     Application,
     ApplicationStatusHistory,
     CandidateProfile,

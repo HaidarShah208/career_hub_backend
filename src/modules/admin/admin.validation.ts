@@ -27,3 +27,15 @@ export const verifyCompanySchema = idParamSchema.extend({
     verified: z.boolean(),
   }),
 });
+
+export const createCategorySchema = z.object({
+  body: z.object({
+    name: z.string().trim().min(2).max(100),
+  }),
+});
+
+export const updateCategorySchema = idParamSchema.extend({
+  body: z.object({
+    name: z.string().trim().min(2).max(100),
+  }),
+});

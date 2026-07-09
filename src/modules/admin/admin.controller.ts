@@ -63,6 +63,24 @@ export class AdminController {
     return sendSuccess(res, items, 'Categories retrieved');
   }
 
+  /** POST /admin/categories */
+  async createCategory(req: Request, res: Response): Promise<Response> {
+    const item = await adminService.createCategory(req.body.name);
+    return sendSuccess(res, item, 'Category created', 201);
+  }
+
+  /** PATCH /admin/categories/:id */
+  async updateCategory(req: Request, res: Response): Promise<Response> {
+    const item = await adminService.updateCategory(req.params.id, req.body.name);
+    return sendSuccess(res, item, 'Category updated');
+  }
+
+  /** DELETE /admin/categories/:id */
+  async deleteCategory(req: Request, res: Response): Promise<Response> {
+    await adminService.deleteCategory(req.params.id);
+    return sendSuccess(res, null, 'Category deleted');
+  }
+
   /** GET /admin/jobs */
   async jobs(req: Request, res: Response): Promise<Response> {
     const query = req.query as unknown as ListJobsQuery;

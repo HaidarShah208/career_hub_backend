@@ -860,6 +860,52 @@ const paths = {
         security: bearerAuth,
         responses: { 200: { description: 'Categories' } },
       },
+      post: {
+        tags: ['Admin'],
+        summary: 'Create a new job category',
+        security: bearerAuth,
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['name'],
+                properties: { name: { type: 'string', minLength: 2, maxLength: 100 } },
+              },
+            },
+          },
+        },
+        responses: { 201: { description: 'Category created' } },
+      },
+    },
+    '/admin/categories/{id}': {
+      patch: {
+        tags: ['Admin'],
+        summary: 'Rename a job category',
+        security: bearerAuth,
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['name'],
+                properties: { name: { type: 'string', minLength: 2, maxLength: 100 } },
+              },
+            },
+          },
+        },
+        responses: { 200: { description: 'Category updated' } },
+      },
+      delete: {
+        tags: ['Admin'],
+        summary: 'Delete a job category (only when it has no jobs)',
+        security: bearerAuth,
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        responses: { 200: { description: 'Category deleted' } },
+      },
     },
     '/admin/revenue': {
       get: {

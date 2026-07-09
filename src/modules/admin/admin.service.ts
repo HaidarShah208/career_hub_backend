@@ -1,9 +1,11 @@
-import { EmployerStatus, JOB_CATEGORIES, UserRole } from '../../shared/constants';
+import { EmployerStatus, UserRole } from '../../shared/constants';
 import { BadRequestError, NotFoundError } from '../../shared/errors';
+import { slugify } from '../../shared/utils/slug';
 import { billingService } from '../billing/billing.service';
 import { notificationService } from '../../shared/services/notification.service';
 import { buildPaginationMeta, PaginationMeta } from '../../shared/utils/pagination';
 import { companiesRepository } from '../companies/companies.repository';
+import { jobCategoriesRepository } from '../jobs/job-categories.repository';
 import { jobsRepository } from '../jobs/jobs.repository';
 import { toPublicUser } from '../users/user.mapper';
 import { usersRepository } from '../users/users.repository';
@@ -107,29 +109,73 @@ export class AdminService {
   }
 
   async listCategories(): Promise<AdminCategoryItem[]> {
-    const rows = await jobsRepository.countByCategory();
-    const countBySlug = new Map(rows.map((r) => [r.category, r.count]));
-    const knownSlugs = new Set<string>(JOB_CATEGORIES.map((c) => c.value));
+    const [catalog, counts] = await Promise.all([
+      jobCategoriesRepository.findAll(),
+      jobsRepository.countByCategory(),
+    ]);
+    const countBySlug = new Map(counts.map((r) => [r.category, r.count]));
 
-    const items: AdminCategoryItem[] = JOB_CATEGORIES.map((cat) => ({
-      id: cat.value,
-      slug: cat.value,
-      name: cat.label,
-      jobs: countBySlug.get(cat.value) ?? 0,
-    }));
+    return catalog
+      .map((cat) => ({
+        id: cat.id,
+        slug: cat.slug,
+        name: cat.name,
+        jobs: countBySlug.get(cat.slug) ?? 0,
+      }))
+      .sort((a, b) => b.jobs - a.jobs || a.name.localeCompare(b.name));
+  }
 
-    for (const row of rows) {
-      if (!knownSlugs.has(row.category)) {
-        items.push({
-          id: row.category,
-          slug: row.category,
-          name: row.category.charAt(0).toUpperCase() + row.category.slice(1).replace(/_/g, ' '),
-          jobs: row.count,
-        });
-      }
+  async createCategory(name: string): Promise<AdminCategoryItem> {
+    const trimmed = name.trim();
+    if (!trimmed) {
+      throw new BadRequestError('Category name is required');
     }
 
-    return items.sort((a, b) => b.jobs - a.jobs || a.name.localeCompare(b.name));
+    const slug = slugify(trimmed).replace(/-/g, '_') || 'category';
+    const existing = await jobCategoriesRepository.findBySlug(slug);
+    if (existing) {
+      throw new BadRequestError('A category with this name already exists');
+    }
+
+    const saved = await jobCategoriesRepository.save(
+      jobCategoriesRepository.create({ slug, name: trimmed }),
+    );
+
+    return { id: saved.id, slug: saved.slug, name: saved.name, jobs: 0 };
+  }
+
+  async updateCategory(id: string, name: string): Promise<AdminCategoryItem> {
+    const trimmed = name.trim();
+    if (!trimmed) {
+      throw new BadRequestError('Category name is required');
+    }
+
+    const category = await jobCategoriesRepository.findById(id);
+    if (!category) {
+      throw new NotFoundError('Category not found');
+    }
+
+    category.name = trimmed;
+    const saved = await jobCategoriesRepository.save(category);
+    const counts = await jobsRepository.countByCategory();
+    const jobs = counts.find((r) => r.category === saved.slug)?.count ?? 0;
+
+    return { id: saved.id, slug: saved.slug, name: saved.name, jobs };
+  }
+
+  async deleteCategory(id: string): Promise<void> {
+    const category = await jobCategoriesRepository.findById(id);
+    if (!category) {
+      throw new NotFoundError('Category not found');
+    }
+
+    const counts = await jobsRepository.countByCategory();
+    const jobs = counts.find((r) => r.category === category.slug)?.count ?? 0;
+    if (jobs > 0) {
+      throw new BadRequestError('Cannot delete a category that has posted jobs');
+    }
+
+    await jobCategoriesRepository.remove(id);
   }
 }
 
