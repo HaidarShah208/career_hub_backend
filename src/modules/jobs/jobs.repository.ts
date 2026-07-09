@@ -39,6 +39,8 @@ export class JobsRepository {
       companyId,
       location,
       city,
+      category,
+      experienceLevel,
       salaryMin,
       salaryMax,
       sortOrder,
@@ -63,6 +65,9 @@ export class JobsRepository {
     // `city` and `location` both filter the job location (city is the public alias).
     const place = city ?? location;
     if (place) qb.andWhere('job.location ILIKE :place', { place: `%${place}%` });
+
+    if (category) qb.andWhere('job.category = :category', { category });
+    if (experienceLevel) qb.andWhere('job.experienceLevel = :experienceLevel', { experienceLevel });
 
     // Salary range: floor on the job's minimum, ceiling on the job's maximum.
     if (salaryMin !== undefined) qb.andWhere('job.salaryMin >= :salaryMin', { salaryMin });

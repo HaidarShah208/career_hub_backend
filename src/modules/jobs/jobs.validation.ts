@@ -63,6 +63,8 @@ export const listJobsSchema = z.object({
     companyId: z.string().uuid().optional(),
     location: z.string().optional(),
     city: z.string().optional(),
+    category: z.string().max(60).optional(),
+    experienceLevel: z.string().max(30).optional(),
     salaryMin: z.coerce.number().int().nonnegative().optional(),
     salaryMax: z.coerce.number().int().nonnegative().optional(),
   }),

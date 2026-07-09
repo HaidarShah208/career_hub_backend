@@ -31,6 +31,8 @@ export interface ListJobsQuery {
   companyId?: string;
   location?: string;
   city?: string;
+  category?: string;
+  experienceLevel?: string;
   salaryMin?: number;
   salaryMax?: number;
   sortOrder: 'ASC' | 'DESC';

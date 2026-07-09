@@ -31,6 +31,8 @@ export class JobsService {
       !query.companyId &&
       !query.location &&
       !query.city &&
+      !query.category &&
+      !query.experienceLevel &&
       query.salaryMin === undefined &&
       query.salaryMax === undefined
     );
