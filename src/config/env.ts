@@ -26,6 +26,8 @@ const envSchema = z.object({
   DATABASE_USER: z.string().default('postgres'),
   DATABASE_PASSWORD: z.string().default('postgres'),
   DATABASE_NAME: z.string().default('career_hub'),
+  /** Full Postgres URL (recommended on Vercel / Neon / Supabase). */
+  DATABASE_URL: z.string().url().optional(),
   DB_SYNCHRONIZE: booleanFromString.default(false),
   DB_LOGGING: booleanFromString.default(false),
 
@@ -69,10 +71,14 @@ if (!parsed.success) {
   const issues = parsed.error.issues
     .map((issue) => `  - ${issue.path.join('.') || '(root)'}: ${issue.message}`)
     .join('\n');
-  // Use console here: the logger itself may depend on a valid environment.
+  const message = `\n[env] Invalid environment configuration:\n${issues}\n`;
   // eslint-disable-next-line no-console
-  console.error(`\n[env] Invalid environment configuration:\n${issues}\n`);
-  process.exit(1);
+  console.error(message);
+  // process.exit kills Vercel serverless functions with no useful response.
+  if (!process.env.VERCEL) {
+    process.exit(1);
+  }
+  throw new Error(message);
 }
 
 export const env = parsed.data;

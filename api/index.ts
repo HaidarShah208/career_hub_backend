@@ -1,9 +1,10 @@
 import 'reflect-metadata'
 import type { Request, Response } from 'express'
 
-import { createApp } from '../src/app/app'
-import { AppDataSource } from '../src/config/database'
-import { connectRedis } from '../src/config/redis'
+// Use compiled output — Vercel runs `npm run build` (tsc) before deploying functions.
+import { createApp } from '../dist/app/app'
+import { AppDataSource } from '../dist/config/database'
+import { connectRedis } from '../dist/config/redis'
 
 let appPromise: Promise<ReturnType<typeof createApp>> | null = null
 
@@ -14,7 +15,10 @@ async function getApp() {
         await AppDataSource.initialize()
       }
 
-      await connectRedis()
+      if (!process.env.VERCEL) {
+        await connectRedis()
+      }
+
       return createApp()
     })().catch(error => {
       appPromise = null
@@ -47,7 +51,29 @@ function rewriteUrl(req: Request) {
 }
 
 export default async function handler(req: Request, res: Response) {
-  rewriteUrl(req)
-  const app = await getApp()
-  return app(req, res)
+  try {
+    rewriteUrl(req)
+    const app = await getApp()
+    return app(req, res)
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[api] Serverless handler failed:', error)
+
+    const message = error instanceof Error ? error.message : 'Unknown startup error'
+    const missingEnv =
+      message.includes('JWT_SECRET') ||
+      message.includes('JWT_REFRESH_SECRET') ||
+      message.includes('environment configuration')
+
+    return res.status(503).json({
+      success: false,
+      message: missingEnv
+        ? 'Server misconfigured: required environment variables are missing on Vercel.'
+        : 'Server failed to start. Check Vercel function logs.',
+      errors: [],
+      hint: missingEnv
+        ? 'Set JWT_SECRET, JWT_REFRESH_SECRET, DATABASE_URL (or DATABASE_*), FRONTEND_URL, CORS_ORIGIN in Vercel → Settings → Environment Variables.'
+        : 'Common causes: DATABASE_URL unreachable, migrations not applied, or cold-start timeout.',
+    })
+  }
 }
